@@ -1,0 +1,17 @@
+TOFIX:
+
+	-capire perchè disegna il lampione con una texture unica
+	-freecam come view_manipulation...?
+	-process fatto ammodo e sensato
+	
+TODO:
+
+	-separare mouse scroll wheel up da wheel down
+	-imgui in file a se
+	-cerca ed implementa:
+		-texture
+		-modelli
+		
+		
+		
+note

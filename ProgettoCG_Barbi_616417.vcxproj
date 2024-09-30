@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="3dparty\imgui\backends\imgui_impl_glfw.cpp" />
+    <ClCompile Include="3dparty\imgui\backends\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="3dparty\imgui\imgui.cpp" />
+    <ClCompile Include="3dparty\imgui\imgui_demo.cpp" />
+    <ClCompile Include="3dparty\imgui\imgui_draw.cpp" />
+    <ClCompile Include="3dparty\imgui\imgui_tables.cpp" />
+    <ClCompile Include="3dparty\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="src\common\camera.cpp" />
+    <ClCompile Include="src\common\freecam.cpp" />
+    <ClCompile Include="src\common\input_manager.cpp" />
+    <ClCompile Include="src\common\trackball_camera.cpp" />
+    <ClCompile Include="src\common\xerrori.cpp" />
+    <ClCompile Include="src\main_game.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="3dparty\imgui\backends\imgui_impl_glfw.h" />
+    <ClInclude Include="3dparty\imgui\backends\imgui_impl_opengl3.h" />
+    <ClInclude Include="3dparty\imgui\imconfig.h" />
+    <ClInclude Include="3dparty\imgui\imgui.h" />
+    <ClInclude Include="3dparty\imgui\imgui_internal.h" />
+    <ClInclude Include="3dparty\imgui\imstb_rectpack.h" />
+    <ClInclude Include="3dparty\imgui\imstb_textedit.h" />
+    <ClInclude Include="3dparty\imgui\imstb_truetype.h" />
+    <ClInclude Include="src\common\aabb.h" />
+    <ClInclude Include="src\common\box3.h" />
+    <ClInclude Include="src\common\camera.hpp" />
+    <ClInclude Include="src\common\carousel\carousel.h" />
+    <ClInclude Include="src\common\carousel\carousel_loader.h" />
+    <ClInclude Include="src\common\carousel\carousel_to_renderable.h" />
+    <ClInclude Include="src\common\debugging.h" />
+    <ClInclude Include="src\common\frame_buffer_object.h" />
+    <ClInclude Include="src\common\freecam.hpp" />
+    <ClInclude Include="src\common\gltf_loader.h" />
+    <ClInclude Include="src\common\input_manager.hpp" />
+    <ClInclude Include="src\common\intersection.h" />
+    <ClInclude Include="src\common\matrix_stack.h" />
+    <ClInclude Include="src\common\path.h" />
+    <ClInclude Include="src\common\renderable.h" />
+    <ClInclude Include="src\common\shaders.h" />
+    <ClInclude Include="src\common\simple_shapes.h" />
+    <ClInclude Include="src\common\stuff.h" />
+    <ClInclude Include="src\common\texture.h" />
+    <ClInclude Include="src\common\trackball_camera.hpp" />
+    <ClInclude Include="src\common\view_manipulator.h" />
+    <ClInclude Include="src\common\xerrori.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\CGCourse2024\src\code_11_texture_bump_mapping\shaders\texture_coords_test.frag" />
+    <None Include="..\CGCourse2024\src\code_11_texture_bump_mapping\shaders\texture_coords_test.vert" />
+    <None Include="src\shaders\basic.frag" />
+    <None Include="src\shaders\basic.vert" />
+    <None Include="src\shaders\texture.frag" />
+    <None Include="src\shaders\texture.vert" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{69ec357d-29b8-4479-88f0-8a94220c05da}</ProjectGuid>
+    <RootNamespace>ProgettoCGBarbi616417</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;GLEW_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(SolutionDir)3dparty\glew\include;$(SolutionDir)src\common;$(SolutionDir)3dparty\glfw\include;$(SolutionDir)3dparty\tinygltf;$(SolutionDir)3dparty\imgui;$(SolutionDir)3dparty\nanosvg\src;$(SolutionDir)3dparty\glm;$(SolutionDir)3dparty;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(SolutionDir)3dparty\glfw\lib;$(SolutionDir)3dparty\glew\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;glew32sd.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
