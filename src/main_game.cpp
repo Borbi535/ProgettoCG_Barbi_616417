@@ -61,7 +61,8 @@ Freecam freecam;
 
 matrix_stack stack;
 
-int game_state = TRACKBALL_STATE;
+int camera_state = TRACKBALL_STATE;
+bool game_paused = false;
 
 // paths
 std::string shaders_path = "src/shaders/";
@@ -73,9 +74,34 @@ GLFWwindow* main_window;
 bool fullscreen = false;
 bool quit = false;
 
+// shaders
+shader basic_shader;
+shader texture_shader;
 
+// textures
+texture grass_texture;
+texture track_texture;
 bool grass_texture_disabled = false;
 bool track_texture_disabled = false;
+
+// renderables
+renderable fram;
+renderable r_cube;
+renderable r_track;
+renderable r_terrain;
+renderable r_trees;
+renderable r_lamps;
+
+// models
+box3 streetlamp_bbox;
+std::vector<renderable> streetlamp_obj;
+box3 m1abrams_bbox;
+std::vector<renderable> m1abrams_obj;
+box3 tree_bbox;
+std::vector<renderable> tree_obj;
+
+
+
 
 
 // callbacks
@@ -133,10 +159,8 @@ void input_bindings()
 		BindKeyCallback(GLFW_KEY_LEFT_CONTROL, GLFW_PRESS, FREECAM_STATE, []() { if (input_manager::cursor_hidden) freecam.MoveDown(trackball.GetScalingFactor()); }, true);
 
 		BindKeyCallback(GLFW_KEY_C, GLFW_PRESS, FREECAM_STATE, input_manager::ToggleMousePointer);
-
-
-
-		//input_manager->BindKeyCallback(GLFW_KEY_TAB, []() { if (camera_index == 0 || camera_index == 1) curr_tb = 1 - curr_tb; }); // VERIFICA SE SERVE
+		BindKeyCallback(GLFW_KEY_P, GLFW_PRESS, FREECAM_STATE, []() { game_paused = !game_paused; });
+		BindKeyCallback(GLFW_KEY_P, GLFW_PRESS, TRACKBALL_STATE, []() { game_paused = !game_paused; });
 
 		// keyboard state bindings
 		BindBoolToKey(GLFW_KEY_LEFT_SHIFT, FREECAM_STATE, &(freecam.is_sprinting));
@@ -168,14 +192,14 @@ void gui_setup() // da sistemare, magari in un file a parte
 			camera_index = 0;
 			trackball.Reset();
 			input_manager::ShowMousePointer();
-			game_state = TRACKBALL_STATE;
+			camera_state = TRACKBALL_STATE;
 		}
 		if (ImGui::Selectable("freecam", camera_index == 1))
 		{
 			camera_index = 1;
 			trackball.Reset();
 			input_manager::HideMousePointer();
-			game_state = FREECAM_STATE;
+			camera_state = FREECAM_STATE;
 		}
 
 		ImGui::EndMenu();
@@ -236,31 +260,16 @@ void gui_setup() // da sistemare, magari in un file a parte
 	ImGui::End();
 }
 
-
-void process()
+void startup_routine(race& r)
 {
-	input_manager::ProcessInput();
-} 
+	carousel_loader::load("assets/small_test.svg", "assets/terrain_256.png", r);
 
-void exit_routine()
-{
-	;
-}
-
-int main(int argc, char** argv)
-{
-	race r;
-	
-	carousel_loader::load("assets/small_test.svg", "assets/terrain_256.png",r);
-	
 	//add 10 cars
-	for (int i = 0; i < 10; ++i)		
+	for (int i = 0; i < 10; ++i)
 		r.add_car();
 
 	/* Initialize the library */
-	if (!glfwInit())
-		return -1;
-
+	xglfwInit(QUI);
 
 	width = 1920;
 	height = 1080;
@@ -293,60 +302,30 @@ int main(int argc, char** argv)
 
 	printout_opengl_glsl_info();
 
-	// textures TODO: metterle in un dizionario
-	texture grass_texture;
-	grass_texture.load(textures_path + "grass_tile.png", GRASS);
-	texture track_texture;
+	// textures TODO: metterle in un dizionario	
+	grass_texture.load(textures_path + "grass_tile.png", GRASS);	
 	track_texture.load(textures_path + "street_tile.png", TRACK);
 
-	renderable fram = shape_maker::frame();
+	// renderables
+	fram = shape_maker::frame();
 
-	renderable r_cube = shape_maker::cube();
+	r_cube = shape_maker::cube();
 
-	renderable r_track;
 	r_track.create();
 	game_to_renderable::to_track(r, r_track);
 
-	renderable r_terrain;
 	r_terrain.create();
 	game_to_renderable::to_heightfield(r, r_terrain);
-		
-	renderable r_trees;
+
 	r_trees.create();
 	game_to_renderable::to_tree(r, r_trees);
 
-	renderable r_lamps;
 	r_lamps.create();
 	game_to_renderable::to_lamps(r, r_lamps);
 
-	shader basic_shader;
+	// shaders
 	basic_shader.create_program((shaders_path + "basic.vert").c_str(), (shaders_path + "basic.frag").c_str());
-	shader texture_shader;
 	texture_shader.create_program((shaders_path + "texture.vert").c_str(), (shaders_path + "texture.frag").c_str());
-
-	gltf_loader gltfL1, gltfL2;
-
-	box3 car_bugatti_type_35_bbox;
-	std::vector<renderable> car_bugatti_type_35_obj;
-	gltfL1.load_to_renderable("assets/models/cars/troll.glb", car_bugatti_type_35_obj, car_bugatti_type_35_bbox);
-
-	box3 streetlamp_bbox;
-	std::vector<renderable> streetlamp_obj;
-	gltfL2.load_to_renderable("assets/models/decorations/street_lamp.glb", streetlamp_obj, streetlamp_bbox);
-	
-	/* define the viewport  */
-	glViewport(0, 0, 1920, 1080);
-
-	trackball = TrackballCamera(glm::vec3(0.f, 1.f, 1.5f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
-	trackball.Set_center_radius(glm::vec3(0.f, 0.f, 0.f), 1.f);
-
-	projection_matrix = glm::perspective(glm::radians(45.f), 16.f/9, 0.001f, 100.f);
-
-	cameras[TRACKBALL_ID] = &trackball;
-	cameras[TRACKBALL_ID]->is_active = true;
-
-	freecam = Freecam(glm::vec3(0.f, 1.f, 1.5f), glm::vec3(0.f, 0.f, -1.f), glm::vec3(0.f, 1.f, 0.f));
-	cameras[FREECAM_ID] = &freecam;
 
 	glUseProgram(basic_shader.program);
 	glUniformMatrix4fv(basic_shader["uProj"], 1, GL_FALSE, &projection_matrix[0][0]);
@@ -358,10 +337,50 @@ int main(int argc, char** argv)
 	glUniformMatrix4fv(texture_shader["uView"], 1, GL_FALSE, &view_matrix[0][0]);
 
 	glUseProgram(0);
+
+	// modelli
+	gltf_loader gltfL1, gltfL2, gltfL3;
+
+	gltfL2.load_to_renderable("assets/models/decorations/street_lamp.glb", streetlamp_obj, streetlamp_bbox);
+	gltfL1.load_to_renderable("assets/models/cars/troll.glb", m1abrams_obj, m1abrams_bbox);
+	//gltfL1.load_to_renderable("assets/models/decorations/maple_tree.glb", tree_obj, tree_bbox);
+
+	// cameras
+	/* define the viewport  */
+	glViewport(0, 0, 1920, 1080);
+
+	trackball = TrackballCamera(glm::vec3(0.f, 1.f, 1.5f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
+	trackball.Set_center_radius(glm::vec3(0.f, 0.f, 0.f), 1.f);
+
+	projection_matrix = glm::perspective(glm::radians(45.f), 16.f / 9, 0.001f, 100.f);
+
+	cameras[TRACKBALL_ID] = &trackball;
+	cameras[TRACKBALL_ID]->is_active = true;
+
+	freecam = Freecam(glm::vec3(0.f, 1.f, 1.5f), glm::vec3(0.f, 0.f, -1.f), glm::vec3(0.f, 1.f, 0.f));
+	cameras[FREECAM_ID] = &freecam;
+			
 	check_gl_errors(QUI, true);
 
-	r.start(11,0,0,600);
+	r.start(11, 0, 0, 600);
 	r.update();
+}
+
+void process()
+{
+	input_manager::ProcessInput();
+} 
+
+void exit_routine()
+{
+	glUseProgram(0);
+	glfwTerminate();
+}
+
+int main(int argc, char** argv)
+{
+	race r;
+	startup_routine(r);
 
 	matrix_stack stack;
 
@@ -383,7 +402,7 @@ int main(int argc, char** argv)
 		view_matrix = cameras[camera_index]->GetViewMatrix();
 		glUniformMatrix4fv(basic_shader["uView"], 1, GL_FALSE, &view_matrix[0][0]);
 
-		r.update();
+		if (!game_paused) r.update();
 
 		stack.load_identity();
 		stack.push();
@@ -441,7 +460,7 @@ int main(int argc, char** argv)
 			stack.mult(r.cars()[ic].frame);
 			stack.mult(glm::translate(glm::mat4(1.f), glm::vec3(0,0.1,0.0)));
 
-			for (renderable obj : car_bugatti_type_35_obj)
+			for (renderable obj : m1abrams_obj)
 			{
 				obj.bind();
 				stack.push();
@@ -506,6 +525,26 @@ int main(int argc, char** argv)
 
 		check_gl_errors(QUI);
 
+		// alberi
+		//for (stick_object tree : r.trees())
+		//{
+		//	stack.push();
+		//	stack.mult(glm::translate(glm::mat4(1), tree.pos));
+		//	for (renderable obj : streetlamp_obj)
+		//	{
+		//		obj.bind();
+		//		stack.push();
+		//		stack.mult(obj.transform);
+		//
+		//		glBindTexture(GL_TEXTURE_2D, obj.mater.base_color_texture);
+		//		glUniformMatrix4fv(texture_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
+		//
+		//		glDrawElements(obj().mode, obj().count, obj().itype, 0);
+		//		stack.pop();
+		//	}
+		//	stack.pop();
+		//}
+
 		r_trees.bind();
 		glUniform3f(basic_shader["uColor"], 0.f, 1.0f, 0.f);
 		glDrawArrays(GL_LINES, 0, r_trees.vn);
@@ -514,6 +553,8 @@ int main(int argc, char** argv)
 		check_gl_errors(QUI);
 
 		// lampioni
+
+
 		glUseProgram(texture_shader.program);
 		for (stick_object lamp : r.lamps())
 		{
@@ -569,9 +610,7 @@ int main(int argc, char** argv)
 
 		Sleep(1000.f / 64 - (end_time - start_time));
 	}
-	
-	glUseProgram(0);
-	glfwTerminate();
+	exit_routine();
 	return 0;
 }
 

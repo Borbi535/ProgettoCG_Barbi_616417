@@ -27,13 +27,22 @@ void xassert(bool expression, const char* message, int line, const char* file)
 // funzioni GLFW
 #ifdef _glfw3_h_
 
+int xglfwInit(int line, const char* file)
+{
+	if (!glfwInit())
+	{
+		std::cout << "glfw initialization creation failed. Line: " << line << " File: " << file << std::endl;
+		exit(1);
+	}
+}
+
 GLFWwindow* xglfwCreateWindow(int width, int height, const char* title, GLFWmonitor* monitor, GLFWwindow* share, int linea, const char* file)
 {
 	GLFWwindow* window = glfwCreateWindow(width, height, title, monitor, share);
 	if (!window)
 	{
 		glfwTerminate();
-		std::cout << "Line: " << linea << " File: " << file << std::endl;
+		std::cout << "glfw window creation failed. Line: " << linea << " File: " << file << std::endl;
 		exit(1);
 	}
 	return window;

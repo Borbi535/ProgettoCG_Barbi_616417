@@ -14,6 +14,8 @@ void xassert(bool expression, const char* message, int line, const char* file);
 // funzioni GLFW
 #ifdef _glfw3_h_
 
+int xglfwInit(int line, const char* file);
+
 GLFWwindow* xglfwCreateWindow(int width, int height, const char* title, GLFWmonitor* monitor, GLFWwindow* share, int linea, const char* file);
 
 int xglfwGetKey(GLFWwindow* window, int key, int line, const char* file);

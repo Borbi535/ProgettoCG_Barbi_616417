@@ -14,11 +14,11 @@ bool input_manager::cursor_hidden = false;
 std::map<int, std::function<void()>> input_manager::mouse_move_callbacks = {};
 std::map<int, std::function<void()>> input_manager::mouse_scroll_callbacks = {};
 
-extern int game_state;
+extern int camera_state;
 
 int input_manager::GetKeyState(int key)
 {
-	if (assigned_keys_per_state[game_state].count(key)) return assigned_keys_per_state[game_state][key].key_state;
+	if (assigned_keys_per_state[camera_state].count(key)) return assigned_keys_per_state[camera_state][key].key_state;
 	
 	std::cout << "the key " << key << " is not assigned." << std::endl;
 	return -1;
@@ -29,7 +29,7 @@ static bool AssignCallbackToMap(int key, std::function<void()>& callback, std::f
 {
 	if (callback)
 	{
-		std::string msg = "a callback function for the key " + std::to_string(key) + " in the game state " + std::to_string(game_state) + " is already assigned.";
+		std::string msg = "a callback function for the key " + std::to_string(key) + " in the game state " + std::to_string(camera_state) + " is already assigned.";
 		if (terminate_on_failure) xterminate(msg.c_str(), QUI);
 		else std::cout << msg << std::endl;
 
@@ -105,11 +105,11 @@ bool input_manager::BindBoolToKey(int key, int game_state, bool* state_to_bind, 
 
 void input_manager::UpdateKeyState(int key, int state)
 {
-	if (assigned_keys_per_state[game_state].count(key))
+	if (assigned_keys_per_state[camera_state].count(key))
 	{
-		assigned_keys_per_state[game_state][key].key_state = state;
+		assigned_keys_per_state[camera_state][key].key_state = state;
 
-		for (bool* b : assigned_keys_per_state[game_state][key].bound_bools) *b = state;
+		for (bool* b : assigned_keys_per_state[camera_state][key].bound_bools) *b = state;
 	}
 
 }
@@ -119,7 +119,7 @@ void input_manager::UpdateMousePosition(double xpos, double ypos)
 	old_mouse_position = mouse_position;
 	mouse_position = glm::vec2(xpos, ypos);
 
-	mouse_move_callbacks[game_state]();
+	mouse_move_callbacks[camera_state]();
 }
 
 void input_manager::UpdateMouseScroll(double xoffset, double yoffset)
@@ -130,13 +130,13 @@ void input_manager::UpdateMouseScroll(double xoffset, double yoffset)
 
 void input_manager::ProcessInput()
 {
-	if (mouse_scroll_changed && mouse_scroll_callbacks.count(game_state) > 0)
+	if (mouse_scroll_changed && mouse_scroll_callbacks.count(camera_state) > 0)
 	{
-		mouse_scroll_callbacks[game_state]();
+		mouse_scroll_callbacks[camera_state]();
 		mouse_scroll_changed = false;
 	}
 
-	for (auto& [key, assigned_key] : assigned_keys_per_state[game_state])
+	for (auto& [key, assigned_key] : assigned_keys_per_state[camera_state])
 	{
 		switch (assigned_key.key_state)
 		{
