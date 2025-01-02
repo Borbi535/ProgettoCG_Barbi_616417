@@ -2,7 +2,8 @@
 
 // PRIVATE
 
-void TrackballCamera::Viewport_to_ray(glm::mat4 proj, double pX, double pY, glm::vec4& p0, glm::vec4& d) {
+void TrackballCamera::Viewport_to_ray(glm::mat4 proj, double pX, double pY, glm::vec4& p0, glm::vec4& d)
+{
 	GLint vp[4];
 	glm::mat4 proj_inv = glm::inverse(proj);
 	glGetIntegerv(GL_VIEWPORT, vp);
@@ -17,7 +18,8 @@ void TrackballCamera::Viewport_to_ray(glm::mat4 proj, double pX, double pY, glm:
 	d = glm::normalize(p1 - p0);
 }
 
-bool TrackballCamera::Cursor_sphere_intersection(glm::mat4 proj, glm::mat4 view, glm::vec3& int_point, double xpos, double ypos) {
+bool TrackballCamera::Cursor_sphere_intersection(glm::mat4 proj, glm::mat4 view, glm::vec3& int_point, double xpos, double ypos)
+{
 	glm::mat4 view_frame = glm::inverse(view);
 
 	glm::vec4 o, d;

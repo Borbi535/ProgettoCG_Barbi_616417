@@ -60,6 +60,9 @@
     <ClCompile Include="src\common\trackball_camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\common\static_mesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\common\aabb.h">
@@ -72,9 +75,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\common\frame_buffer_object.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\common\gltf_loader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\common\intersection.h">
@@ -150,6 +150,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\common\carousel\carousel_to_renderable.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\static_mesh.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

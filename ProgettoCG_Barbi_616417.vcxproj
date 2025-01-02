@@ -28,6 +28,7 @@
     <ClCompile Include="3dparty\imgui\imgui_widgets.cpp" />
     <ClCompile Include="src\common\camera.cpp" />
     <ClCompile Include="src\common\freecam.cpp" />
+    <ClCompile Include="src\common\static_mesh.cpp" />
     <ClCompile Include="src\common\input_manager.cpp" />
     <ClCompile Include="src\common\trackball_camera.cpp" />
     <ClCompile Include="src\common\xerrori.cpp" />
@@ -51,7 +52,7 @@
     <ClInclude Include="src\common\debugging.h" />
     <ClInclude Include="src\common\frame_buffer_object.h" />
     <ClInclude Include="src\common\freecam.hpp" />
-    <ClInclude Include="src\common\gltf_loader.h" />
+    <ClInclude Include="src\common\static_mesh.hpp" />
     <ClInclude Include="src\common\input_manager.hpp" />
     <ClInclude Include="src\common\intersection.h" />
     <ClInclude Include="src\common\matrix_stack.h" />

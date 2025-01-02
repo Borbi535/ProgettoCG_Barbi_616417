@@ -8,7 +8,7 @@
 #include <map>
 #include <fstream>
 #include <regex>
-#include "../common/debugging.h"
+#include "debugging.h"
 
 struct shader{
         GLuint   vertex_shader, geometry_shader, compute_shader, fragment_shader, program;

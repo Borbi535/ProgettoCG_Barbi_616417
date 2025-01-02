@@ -7,6 +7,7 @@
 struct material {
 	std::string name;
 	std::string alpha_mode;
+	bool use_texture;
 	double alpha_cutoff;
 	double base_color_factor[4];
 	GLint base_color_texture; 
@@ -16,6 +17,8 @@ struct material {
 	GLint normal_texture;
 	GLint emissive_texture;
 	GLint occlusion_texture;
+
+	material() :use_texture(true) {}
 };
 
 

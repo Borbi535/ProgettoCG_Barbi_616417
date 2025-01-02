@@ -3,6 +3,7 @@
 #include <string>
 #include <filesystem>
 #include <debugging.h>
+#include <xerrori.hpp>
 
 
 struct texture {
