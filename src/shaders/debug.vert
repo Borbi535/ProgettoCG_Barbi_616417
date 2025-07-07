@@ -17,21 +17,24 @@ uniform mat4 uView;
 uniform mat4 uModel;
 uniform vec3 uLDir;
 
+//uniform vec3 uDiffuseColor;
+//uniform vec3 uAmbientColor;
+//uniform vec3 uSpecularColor;
+//uniform vec3 uLightColor;
+//uniform float uShininess;
+
 uniform mat4 uSunProj;
 uniform mat4 uSunView;
 
 
 void main(void)
 {
-	vLDirVS   =  (uView*vec4(uLDir,0.f)).xyz;
-	
+	vLDirVS   =  (uView*vec4(uLDir,0.f)).xyz; 
 	vNormalVS =  (uView*uModel*vec4(aNormal, 0.0)).xyz;
 
-	vPosVS = (uView*uModel*vec4(aPosition, 1.0)).xyz; 
+	vPosVS = (uView*uModel*vec4(aPosition, 1.0)).xyz;
 
 	vSunShadowCoords = uSunProj * uSunView * uModel * vec4(aPosition, 1.0);
-
-	//vColor    = phong(vLDirVS,normalize(-vPosVS),normalize(vNormalVS));
 	
     vTexCoord = aTexCoord;
     gl_Position = uProj*uView*uModel*vec4(aPosition, 1.0);

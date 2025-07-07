@@ -14,31 +14,31 @@ Freecam::Freecam(Freecam& freecam): Camera(freecam)
 
 Freecam::~Freecam() {}
 
-void Freecam::MoveForward(float scaling_factor)
+void Freecam::MoveForward()
 {
-	_eye += view_direction * GetSpeed();// * scaling_factor;
+	_eye += _center * GetSpeed();
 }
-void Freecam::MoveBackward(float scaling_factor)
+void Freecam::MoveBackward()
 {
-	_eye -= view_direction * GetSpeed();// *scaling_factor;
+	_eye -= _center * GetSpeed();
 }
-void Freecam::MoveLeft(float scaling_factor)
+void Freecam::MoveLeft()
 {
-	glm::vec3 right_vector = glm::cross(view_direction, up_direction);
-	_eye -= right_vector * GetSpeed();// * scaling_factor;
+	glm::vec3 right_vector = glm::cross(_center, up_direction);
+	_eye -= right_vector * GetSpeed();
 }
-void Freecam::MoveRight(float scaling_factor)
+void Freecam::MoveRight()
 {
-	glm::vec3 right_vector = glm::cross(view_direction, up_direction);
-	_eye += right_vector * GetSpeed();// * scaling_factor;
+	glm::vec3 right_vector = glm::cross(_center, up_direction);
+	_eye += right_vector * GetSpeed();
 }
-void Freecam::MoveUp(float scaling_factor)
+void Freecam::MoveUp()
 {
-	_eye += up_direction * GetSpeed();// * scaling_factor;
+	_eye += up_direction * GetSpeed();
 }
-void Freecam::MoveDown(float scaling_factor)
+void Freecam::MoveDown()
 {
-	_eye -= up_direction * GetSpeed();// * scaling_factor;
+	_eye -= up_direction * GetSpeed();
 }
 
 void Freecam::MouseMove()
@@ -52,7 +52,7 @@ void Freecam::MouseMove()
 
 	glm::vec2 delta = input_manager::old_mouse_position - input_manager::mouse_position;
 	delta *= mouse_sensitivity / 10000;
-	view_direction = glm::rotate(glm::rotate(view_direction, delta.x, glm::vec3(0, 1, 0)), delta.y, glm::cross(view_direction, up_direction));
+	_center = glm::rotate(glm::rotate(_center, delta.x, glm::vec3(0, 1, 0)), delta.y, glm::cross(_center, up_direction));
 	input_manager::old_mouse_position = input_manager::mouse_position;
 }
 

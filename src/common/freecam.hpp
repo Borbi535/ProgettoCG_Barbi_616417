@@ -17,12 +17,12 @@ public:
 
 	~Freecam();
 
-	void MoveForward(float scaling_factor);
-	void MoveBackward(float scaling_factor);
-	void MoveLeft(float scaling_factor);
-	void MoveRight(float scaling_factor);
-	void MoveUp(float scaling_factor);
-	void MoveDown(float scaling_factor);
+	void MoveForward();
+	void MoveBackward();
+	void MoveLeft();
+	void MoveRight();
+	void MoveUp();
+	void MoveDown();
 
 	void MouseMove();
 

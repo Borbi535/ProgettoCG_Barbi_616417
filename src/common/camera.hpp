@@ -7,7 +7,7 @@
 #include <ext.hpp>
 #include <GL/glew.h>
 
-enum CameraID { TRACKBALL_ID, FREECAM_ID, CAMERAMAN1_ID, CAMERAMAN2_ID, CAMERAMAN3_ID, CAMERAMAN4_ID, CAMS_NUMBER };
+enum CameraID { ARCBALL_ID, FREECAM_ID, CAMERAMAN1_ID, CAMERAMAN2_ID, CAMERAMAN3_ID, CAMERAMAN4_ID, CAMS_NUMBER };
 
 class Camera
 {
@@ -17,16 +17,18 @@ public:
 	Camera();
 	Camera(glm::vec3 eye, glm::vec3 center, glm::vec3 up);
 
-	Camera(Camera& cam); // cc
+	Camera(Camera& cam);
 
 	~Camera();
 
 	glm::mat4 GetViewMatrix();
 	glm::vec3 GetPosition();
 
-	void SetParameters(glm::vec3 eye, glm::vec3 view_dir, glm::vec3 up_dir); // TODO: trovare un nome migliore
+	void SetParameters(glm::vec3 eye, glm::vec3 view_dir, glm::vec3 up_dir);
 	
+	void ResetParameters();
 
 protected:
-	glm::vec3 _eye, view_direction, up_direction;
+	glm::vec3 _eye, _center, up_direction;
+	glm::vec3 original_eye, original_center, original_up_direction;
 };

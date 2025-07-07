@@ -27,18 +27,21 @@
 #define TINYGLTF_NO_INCLUDE_STB_IMAGE
 
 #include "static_mesh.hpp"
+#include "heightmap.hpp"
 
 #include "renderable.h"
 #include "debugging.h"
+#include "graphical_debugging.hpp"
 #include "shaders.h"
 #include "simple_shapes.h"
 #include "matrix_stack.h"
 #include "intersection.h"
 #include "input_manager.hpp"
 #include "camera.hpp"
-#include "trackball_camera.hpp"
+#include "arcball_camera.hpp"
 #include "freecam.hpp"
 #include "texture.h"
+#include "light.hpp"
 
 #include "carousel\carousel.h"
 #include "carousel\carousel_to_renderable.h"
@@ -50,19 +53,25 @@
 
 enum TextureID { GRASS, TRACK, TEX_IDS_NUMBER };
 
-enum GameState { TRACKBALL_STATE, FREECAM_STATE, CAMERAMEN_STATE };
+enum GameState { ARCBALL_STATE, FREECAM_STATE, CAMERAMEN_STATE };
 
-glm::mat4 projection_matrix; /* projection matrix*/
-glm::mat4 view_matrix; /* view matrix */
+glm::mat4 projection_matrix;
+glm::mat4 view_matrix;
 
 Camera* cameras[CAMS_NUMBER];
 unsigned int camera_index = 0;
-TrackballCamera trackball;
+ArcballCamera arcball_camera;
 Freecam freecam;
 
 matrix_stack stack;
 
-int camera_state = TRACKBALL_STATE;
+DirectionalLight sun_light;
+float ambient_color[3] = { 0.15f,0.15f,0.15f };
+float diffuse_color[3] = { 0.5f,0.1f,0.2f };
+float specular_color[3] = { 0.5f,0.1f,0.2f };
+float shininess = 1.0f;
+
+int camera_state = ARCBALL_STATE;
 bool game_paused = false;
 
 // paths
@@ -70,14 +79,16 @@ std::string shaders_path = "src/shaders/";
 std::string textures_path = "assets/textures/";
 
 // window
-int width, height;
+int window_width, window_height;
+glm::vec2 window_center;
 GLFWwindow* main_window;
 bool fullscreen = false;
 bool quit = false;
 
-
+// debug
 bool grass_texture_disabled = false;
 bool track_texture_disabled = false;
+bool show_debug_shapes = false;
 
 
 // callbacks
@@ -103,10 +114,10 @@ void key_callback(GLFWwindow * main_window, int key, int scancode, int action, i
 
 void window_size_callback(GLFWwindow* main_window, int _width, int _height)
 {
-	width = _width;
-	height = _height;
-	glViewport(0, 0, width, height);
-	projection_matrix = glm::perspective(glm::radians(40.f), width / float(height), 2.f, 100.f);
+	window_width = _width;
+	window_height = _height;
+	glViewport(0, 0, window_width, window_height);
+	projection_matrix = glm::perspective(glm::radians(40.f), window_width / float(window_height), 2.f, 100.f);
 }
 
 void error_callback(int, const char* err_str)
@@ -119,7 +130,6 @@ void change_camera(unsigned int i, Camera in, Camera out)
 	camera_index = i;
 	in.is_active = true;
 	out.is_active = false;
-	trackball.Reset();
 }
 
 void input_bindings()
@@ -127,37 +137,35 @@ void input_bindings()
 	using namespace input_manager;
 	{
 		// keyboard callback bindings
-		BindKeyCallback(GLFW_KEY_W, GLFW_PRESS, FREECAM_STATE, []() { if (cursor_hidden) freecam.MoveForward(trackball.GetScalingFactor()); }, true);
-		BindKeyCallback(GLFW_KEY_S, GLFW_PRESS, FREECAM_STATE, []() { if (cursor_hidden) freecam.MoveBackward(trackball.GetScalingFactor()); }, true);
-		BindKeyCallback(GLFW_KEY_A, GLFW_PRESS, FREECAM_STATE, []() { if (cursor_hidden) freecam.MoveLeft(trackball.GetScalingFactor()); }, true);
-		BindKeyCallback(GLFW_KEY_D, GLFW_PRESS, FREECAM_STATE, []() { if (cursor_hidden) freecam.MoveRight(trackball.GetScalingFactor()); }, true);
-		BindKeyCallback(GLFW_KEY_SPACE, GLFW_PRESS, FREECAM_STATE, []() { if (cursor_hidden) freecam.MoveUp(trackball.GetScalingFactor()); }, true);
-		BindKeyCallback(GLFW_KEY_LEFT_CONTROL, GLFW_PRESS, FREECAM_STATE, []() { if (cursor_hidden) freecam.MoveDown(trackball.GetScalingFactor()); }, true);
+		BindKeyCallback(GLFW_KEY_W, GLFW_PRESS, FREECAM_STATE, []() { if (cursor_hidden) freecam.MoveForward(); }, true);
+		BindKeyCallback(GLFW_KEY_S, GLFW_PRESS, FREECAM_STATE, []() { if (cursor_hidden) freecam.MoveBackward(); }, true);
+		BindKeyCallback(GLFW_KEY_A, GLFW_PRESS, FREECAM_STATE, []() { if (cursor_hidden) freecam.MoveLeft(); }, true);
+		BindKeyCallback(GLFW_KEY_D, GLFW_PRESS, FREECAM_STATE, []() { if (cursor_hidden) freecam.MoveRight(); }, true);
+		BindKeyCallback(GLFW_KEY_SPACE, GLFW_PRESS, FREECAM_STATE, []() { if (cursor_hidden) freecam.MoveUp(); }, true);
+		BindKeyCallback(GLFW_KEY_LEFT_CONTROL, GLFW_PRESS, FREECAM_STATE, []() { if (cursor_hidden) freecam.MoveDown(); }, true);
 
 		BindKeyCallback(GLFW_KEY_C, GLFW_PRESS, FREECAM_STATE, ToggleMousePointer);
 		BindKeyCallback(GLFW_KEY_P, GLFW_PRESS, FREECAM_STATE, []() { game_paused = !game_paused; });
-		BindKeyCallback(GLFW_KEY_P, GLFW_PRESS, TRACKBALL_STATE, []() { game_paused = !game_paused; });
-
-
-
-		//input_manager->BindKeyCallback(GLFW_KEY_TAB, []() { if (camera_index == 0 || camera_index == 1) curr_tb = 1 - curr_tb; }); // VERIFICA SE SERVE
+		BindKeyCallback(GLFW_KEY_P, GLFW_PRESS, ARCBALL_STATE, []() { game_paused = !game_paused; });
 
 		// keyboard state bindings
 		BindBoolToKey(GLFW_KEY_LEFT_SHIFT, FREECAM_STATE, &(freecam.is_sprinting));
 
 		// mouse callback bindings
-		BindKeyCallback(GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, TRACKBALL_STATE,[]() { trackball.MousePress(); });
-		BindKeyCallback(GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE, TRACKBALL_STATE, []() { trackball.MouseRelease(); });
-		BindMouseScrollCallback(TRACKBALL_STATE, []() { trackball.MouseScroll(); });
+		BindKeyCallback(GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, ARCBALL_STATE,[]() { arcball_camera.MouseLPress(); });
+		BindKeyCallback(GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE, ARCBALL_STATE, []() { arcball_camera.MouseLRelease(); });
+		BindKeyCallback(GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, ARCBALL_STATE, []() { arcball_camera.MouseScrollPress(); });
+		BindKeyCallback(GLFW_MOUSE_BUTTON_MIDDLE, GLFW_RELEASE, ARCBALL_STATE, []() { arcball_camera.MouseScrollRelease(); });
+		BindMouseScrollCallback(ARCBALL_STATE, []() { arcball_camera.MouseScroll(); });
 
-		BindMouseMoveCallback(TRACKBALL_STATE, []() { trackball.MouseMove(); });
+		BindMouseMoveCallback(ARCBALL_STATE, []() { arcball_camera.MouseMove(); });
 		BindMouseMoveCallback(FREECAM_STATE ,[]() { freecam.MouseMove(); });
 	}
 }
 
 static int fps;
 bool first_time_gui = true;
-void gui_setup() // da sistemare, magari in un file a parte
+void gui_setup()
 {
 	ImGui::BeginMainMenuBar();
 	
@@ -167,20 +175,20 @@ void gui_setup() // da sistemare, magari in un file a parte
 
 	if (ImGui::BeginMenu("Camera"))
 	{
-		if (ImGui::Selectable("trackball", camera_index == 0))
+		if (ImGui::Selectable("arcball", camera_index == 0))
 		{
 			camera_index = 0;
-			trackball.Reset();
 			input_manager::ShowMousePointer();
-			camera_state = TRACKBALL_STATE;
+			camera_state = ARCBALL_STATE;
 		}
 		if (ImGui::Selectable("freecam", camera_index == 1))
 		{
 			camera_index = 1;
-			trackball.Reset();
 			input_manager::HideMousePointer();
 			camera_state = FREECAM_STATE;
 		}
+
+		if (ImGui::Button("Reset posizione cam")) cameras[camera_index]->ResetParameters();
 
 		ImGui::EndMenu();
 	}
@@ -193,7 +201,7 @@ void gui_setup() // da sistemare, magari in un file a parte
 			{
 				if (fullscreen)
 				{
-					glfwSetWindowMonitor(main_window, NULL, 0, 0, width, height, GLFW_DONT_CARE);
+					glfwSetWindowMonitor(main_window, NULL, 0, 0, window_width, window_height, GLFW_DONT_CARE);
 					fullscreen = false;
 				}
 			}
@@ -202,7 +210,7 @@ void gui_setup() // da sistemare, magari in un file a parte
 			{
 				if (!fullscreen)
 				{
-					glfwSetWindowMonitor(main_window, glfwGetPrimaryMonitor(), 0, 0, width, height, GLFW_DONT_CARE);
+					glfwSetWindowMonitor(main_window, glfwGetPrimaryMonitor(), 0, 0, window_width, window_height, GLFW_DONT_CARE);
 					fullscreen = true;
 				}
 			}
@@ -221,6 +229,23 @@ void gui_setup() // da sistemare, magari in un file a parte
 		ImGui::EndMenu();
 	}
 
+	if (ImGui::BeginMenu("Material"))
+	{
+		ImGuiColorEditFlags misc_flags = ImGuiColorEditFlags_NoOptions;
+		ImGui::ColorEdit3("amb color", (float*)&ambient_color, misc_flags);
+		ImGui::ColorEdit3("diff color", (float*)&diffuse_color, misc_flags);
+		ImGui::ColorEdit3("spec color", (float*)&specular_color, misc_flags);
+		ImGui::SliderFloat("shininess", &shininess, 1.f, 100.f);
+		ImGui::EndMenu(); 
+	}
+
+	if (ImGui::BeginMenu("Debug"))
+	{
+		ImGui::Checkbox("show debug shapes", &show_debug_shapes);
+
+		ImGui::EndMenu();
+	}
+
 	ImGui::EndMainMenuBar();
 
 	if (ImGui::Begin("Debug info"))
@@ -228,12 +253,9 @@ void gui_setup() // da sistemare, magari in un file a parte
 		if (first_time_gui)
 		{
 			ImGui::SetWindowSize(ImVec2(150, 300));
-			ImGui::SetWindowPos(ImVec2(1770, 18));
+			ImGui::SetWindowPos(ImVec2(1700, 18));
 			first_time_gui = false;
 		}
-		//ImGui::Text(std::to_string(tb[0].GetScalingFactor()).c_str());
-		//ImGui::Text(std::to_string(freecam.GetSpeed() * trackball.GetScalingFactor()).c_str());
-		//ImGui::Text(glm::to_string(freecam.GetPosition()).c_str());
 		ImGui::Text(glm::to_string(input_manager::mouse_position).c_str());
 	}
 
@@ -265,13 +287,13 @@ int main(int argc, char** argv)
 	if (!glfwInit())
 		return -1;
 
-
-	width = 1920;
-	height = 1080;
+	window_width = 1920;
+	window_height = 1080;
+	window_center = glm::vec2(window_width / 2, window_height / 2);
 
 	/* Create a windowed mode window and its OpenGL context */
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-	main_window = xglfwCreateWindow(width, height, "CarOusel", NULL, NULL, QUI);
+	main_window = xglfwCreateWindow(window_width, window_height, "CarOusel", NULL, NULL, QUI);
 
 	/* declare the callback functions on mouse events */
 	if (glfwRawMouseMotionSupported()) glfwSetInputMode(main_window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
@@ -314,6 +336,13 @@ int main(int argc, char** argv)
 	renderable r_terrain;
 	r_terrain.create();
 	game_to_renderable::to_heightfield(r, r_terrain);
+
+	renderable r_terrain_second;
+	r_terrain_second.create();
+	height_map terrain_heightmap;
+	terrain_heightmap.set_bounding_rect(r.ter().rect_xz[0], r.ter().rect_xz[1], r.ter().rect_xz[2], r.ter().rect_xz[3]);
+	terrain_heightmap.load_from_file("assets/terrain_256.png");
+	terrain_heightmap.to_renderable(r_terrain_second);
 		
 	renderable r_trees;
 	r_trees.create();
@@ -323,11 +352,32 @@ int main(int argc, char** argv)
 	r_lamps.create();
 	game_to_renderable::to_lamps(r, r_lamps);
 
+	std::vector<PositionalLight> positional_lights;
+	for (stick_object lamp : r.lamps())
+	{
+		glm::vec3 light_position = glm::vec4((lamp.pos + glm::vec3(0, 2.7f, 0)), 1.f);
+		positional_lights.push_back(PositionalLight(light_position, glm::vec4(0, -1, 0, 1), 10.f, 2.f, glm::vec3(0.3f, 0.3f, 0.3f)));
+	}
+	std::vector<PositionalLightData> positional_lights_data = PositionalLight::GetLightsData();
+
 	shader basic_shader;
 	basic_shader.create_program((shaders_path + "basic.vert").c_str(), (shaders_path + "basic.frag").c_str());
 	shader texture_shader;
 	texture_shader.create_program((shaders_path + "texture.vert").c_str(), (shaders_path + "texture.frag").c_str());
 	StaticMesh::SetShader(texture_shader);
+	shader debug_shader;
+	debug_shader.create_program((shaders_path + "debug.vert").c_str(), (shaders_path + "debug.frag").c_str());
+
+	// Shader Storage Buffer Object
+	GLuint positional_lights_SSBO;
+	glGenBuffers(1, &positional_lights_SSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, positional_lights_SSBO);
+
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, positional_lights_SSBO);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, positional_lights_data.size() * sizeof(PositionalLightData), positional_lights_data.data(), GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+
 
 	StaticMesh car_model("assets/models/cars/bumper_car.glb");
 	StaticMesh streetlamp_model("assets/models/decorations/street_lamp.glb");
@@ -336,13 +386,12 @@ int main(int argc, char** argv)
 	/* define the viewport  */
 	glViewport(0, 0, 1920, 1080);
 
-	trackball = TrackballCamera(glm::vec3(0.f, 1.f, 1.5f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
-	trackball.Set_center_radius(glm::vec3(0.f, 0.f, 0.f), 1.f);
+	arcball_camera = ArcballCamera(glm::vec3(0.f, 1.f, 1.5f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
 
 	projection_matrix = glm::perspective(glm::radians(45.f), 16.f/9, 0.001f, 100.f);
 
-	cameras[TRACKBALL_ID] = &trackball;
-	cameras[TRACKBALL_ID]->is_active = true;
+	cameras[ARCBALL_ID] = &arcball_camera;
+	cameras[ARCBALL_ID]->is_active = true;
 
 	freecam = Freecam(glm::vec3(0.f, 1.f, 1.5f), glm::vec3(0.f, 0.f, -1.f), glm::vec3(0.f, 1.f, 0.f));
 	cameras[FREECAM_ID] = &freecam;
@@ -356,12 +405,21 @@ int main(int argc, char** argv)
 	glUniformMatrix4fv(texture_shader["uProj"], 1, GL_FALSE, &projection_matrix[0][0]);
 	glUniformMatrix4fv(texture_shader["uView"], 1, GL_FALSE, &view_matrix[0][0]);
 
+	glUniform1i(texture_shader["uNumPosLights"], positional_lights.size());
+
+	glUseProgram(debug_shader.program);
+	glUniformMatrix4fv(debug_shader["uModel"], 1, GL_FALSE, &glm::mat4(1.0)[0][0]);
+	glUniformMatrix4fv(debug_shader["uProj"], 1, GL_FALSE, &projection_matrix[0][0]);
+	glUniformMatrix4fv(debug_shader["uView"], 1, GL_FALSE, &view_matrix[0][0]);
+
 	glUseProgram(0);
 	check_gl_errors(QUI, true);
 
 	r.start(11,0,0,600);
 	r.update();
 
+	sun_light = DirectionalLight(r.sunlight_direction(), glm::vec3(5.f));
+	
 	matrix_stack stack;
 
 	glEnable(GL_DEPTH_TEST);
@@ -377,19 +435,51 @@ int main(int argc, char** argv)
 
 		check_gl_errors(QUI);
 
+		if (!game_paused) r.update();
+
+		sun_light.SetDirection(r.sunlight_direction());
+
 		view_matrix = cameras[camera_index]->GetViewMatrix();
 
 		glUseProgram(texture_shader.program);
 		glUniformMatrix4fv(texture_shader["uView"], 1, GL_FALSE, &view_matrix[0][0]);
+		glUniform3f(texture_shader["uAmbientColor"], ambient_color[0], ambient_color[1], ambient_color[2]);
+		glUniform3f(texture_shader["uDiffuseColor"], diffuse_color[0], diffuse_color[1], diffuse_color[2]);
+		glUniform3f(texture_shader["uSpecularColor"], specular_color[0], specular_color[1], specular_color[2]);
+		glUniform3f(texture_shader["uSunColor"], sun_light.GetColor().x, sun_light.GetColor().y, sun_light.GetColor().z);
+		glUniform1f(texture_shader["uShininess"], shininess);
+		glUniform3f(texture_shader["uLDir"], sun_light.GetDirection().x, sun_light.GetDirection().y, sun_light.GetDirection().z);
 
+		glUseProgram(debug_shader.program);
+		glUniformMatrix4fv(debug_shader["uView"], 1, GL_FALSE, &view_matrix[0][0]);
+		glUniform3f(debug_shader["uAmbientColor"], ambient_color[0], ambient_color[1], ambient_color[2]);
+		glUniform3f(debug_shader["uDiffuseColor"], diffuse_color[0], diffuse_color[1], diffuse_color[2]);
+		glUniform3f(debug_shader["uSpecularColor"], specular_color[0], specular_color[1], specular_color[2]);
+		glUniform3f(debug_shader["uSunColor"], sun_light.GetColor().x, sun_light.GetColor().y, sun_light.GetColor().z);
+		glUniform1f(debug_shader["uShininess"], shininess);
+		glUniform3f(debug_shader["uLDir"], sun_light.GetDirection().x, sun_light.GetDirection().y, sun_light.GetDirection().z);
+		
 		glUseProgram(basic_shader.program);
 		glUniformMatrix4fv(basic_shader["uView"], 1, GL_FALSE, &view_matrix[0][0]);
 
-		if (!game_paused) r.update();
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, positional_lights_SSBO);
+		PositionalLightData* mapped_lights = (PositionalLightData*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_WRITE_ONLY);
+
+		if (mapped_lights)
+		{
+			for (unsigned int i = 0; i < positional_lights.size(); i++)
+			{
+				mapped_lights[i].position = view_matrix * glm::vec4(positional_lights[i].GetPosition(), 1.f);
+				mapped_lights[i].direction = glm::normalize(view_matrix * glm::vec4(positional_lights[i].GetDirection(), 0.f));
+			}
+
+			glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+		}
+		else xterminate("Errore nella apertura di positional_lights_SSBO", QUI);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 		stack.load_identity();
 		stack.push();
-		stack.mult(trackball.GetMatrix());
 		glUniformMatrix4fv(basic_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
 		glUniform3f(basic_shader["uColor"], -1.f, 0.6f, 0.f);
 		fram.bind();
@@ -400,7 +490,6 @@ int main(int argc, char** argv)
 		glVertex3f(0, 0, 0);
 		glVertex3f(r.sunlight_direction().x, r.sunlight_direction().y, r.sunlight_direction().z);
 		glEnd();
-
 
 		float s = 1.f/r.bbox().diagonal();
 		glm::vec3 c = r.bbox().center();
@@ -413,23 +502,34 @@ int main(int argc, char** argv)
 			glDepthRange(0.01, 1);
 			glUniformMatrix4fv(basic_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
 			glUniform3f(basic_shader["uColor"], 1, 1, 1.0);
-			r_terrain.bind();
-			glDrawArrays(GL_POINTS, 0, r_terrain.vn);
+			//r_terrain.bind();
+			r_terrain_second.bind();
+			//glDrawArrays(GL_POINTS, 0, r_terrain.vn);
+			glDrawArrays(GL_POINTS, 0, r_terrain_second.vn);
 			glDepthRange(0.0, 1);
 		}
 		else
 		{
 			glUseProgram(texture_shader.program);
+			//glUseProgram(debug_shader.program);
 			glActiveTexture(GL_TEXTURE0 + GRASS);
-			glUniform1i(texture_shader["uTextureAvailable"], r_terrain.mater.use_texture);
+			//glUniform1i(texture_shader["uTextureAvailable"], r_terrain.mater.use_texture);
+			glUniform1i(texture_shader["uTextureAvailable"], r_terrain_second.mater.use_texture);
+			//glUniform1i(debug_shader["uTextureAvailable"], r_terrain.mater.use_texture);
 			glBindTexture(GL_TEXTURE_2D, grass_texture.id);
-			glDepthRange(0.01, 1);
+			glDepthRange(0.03, 1);
 			glUniformMatrix4fv(texture_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
 			glUniform1i(texture_shader["uColorImage"], GRASS);
-			r_terrain.bind();
-			glDrawElements(r_terrain().mode, r_terrain().count, r_terrain().itype, 0);
+			//glUniformMatrix4fv(debug_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
+			//glUniform1i(debug_shader["uColorImage"], GRASS);
+			//r_terrain.bind();
+			r_terrain_second.bind();
+			//glDrawElements(r_terrain().mode, r_terrain().count, r_terrain().itype, 0);
+			glDrawElements(r_terrain_second().mode, r_terrain_second().count, r_terrain_second().itype, 0);
 			glDepthRange(0.0, 1);
 			glBindTexture(GL_TEXTURE_2D, 0);
+
+			//std::cout << stack.m() << std::endl;
 
 			glUseProgram(basic_shader.program);
 		}
@@ -496,9 +596,6 @@ int main(int argc, char** argv)
 
 		check_gl_errors(QUI);
 
-
-		check_gl_errors(QUI);
-
 		// alberi
 		glUseProgram(texture_shader.program);
 		for (stick_object tree : r.trees())
@@ -506,7 +603,7 @@ int main(int argc, char** argv)
 			stack.push();
 			stack.mult(glm::translate(glm::mat4(1), tree.pos));
 			
-			tree_model.Draw(stack);
+			tree_model.Draw(stack, .5f);
 
 			stack.pop();
 		}
@@ -519,24 +616,31 @@ int main(int argc, char** argv)
 		check_gl_errors(QUI);
 
 		// lampioni
-		glUseProgram(texture_shader.program);
 		for (stick_object lamp : r.lamps())
 		{
+			glUseProgram(texture_shader.program);
 			stack.push();
 			stack.mult(glm::translate(glm::mat4(1), lamp.pos));
-			
+
 			streetlamp_model.Draw(stack);
+
+			if (show_debug_shapes)
+			{
+				GraphicalDebugObject debug_lamps = GraphicalDebugObject(CUBE);
+				stack.mult(glm::translate(glm::mat4(1), glm::vec3(0, 2.7f, 0)));
+				debug_lamps.Draw(stack, basic_shader, .2f);
+			}
 
 			stack.pop();
 		}
 
 		check_gl_errors(QUI);
 
-
 		//r_lamps.bind();
 		//glUniform3f(basic_shader["uColor"], 1.f, 1.0f, 0.f);
 		//glDrawArrays(GL_LINES, 0, r_lamps.vn);
 		
+
 		stack.pop();
 
 		ImGui_ImplOpenGL3_NewFrame();
@@ -563,7 +667,7 @@ int main(int argc, char** argv)
 			last_time = end_time;
 		}
 
-		Sleep(1000.f / 64 - (end_time - start_time));
+		Sleep(1000.f / 60 - (end_time - start_time));
 	}
 	
 	glUseProgram(0);

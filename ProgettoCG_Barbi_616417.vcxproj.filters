@@ -57,10 +57,19 @@
     <ClCompile Include="src\common\freecam.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\common\trackball_camera.cpp">
+    <ClCompile Include="src\common\static_mesh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\common\static_mesh.cpp">
+    <ClCompile Include="src\common\light.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\common\heightmap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\common\graphical_debugging.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\common\arcball_camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -140,9 +149,6 @@
     <ClInclude Include="src\common\freecam.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\common\trackball_camera.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\common\carousel\carousel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -153,6 +159,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\common\static_mesh.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\light.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\heightmap.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\graphical_debugging.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common\arcball_camera.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -169,10 +187,10 @@
     <None Include="src\shaders\texture.vert">
       <Filter>shaders</Filter>
     </None>
-    <None Include="..\CGCourse2024\src\code_11_texture_bump_mapping\shaders\texture_coords_test.frag">
+    <None Include="src\shaders\debug.frag">
       <Filter>shaders</Filter>
     </None>
-    <None Include="..\CGCourse2024\src\code_11_texture_bump_mapping\shaders\texture_coords_test.vert">
+    <None Include="src\shaders\debug.vert">
       <Filter>shaders</Filter>
     </None>
   </ItemGroup>

@@ -26,11 +26,14 @@
     <ClCompile Include="3dparty\imgui\imgui_draw.cpp" />
     <ClCompile Include="3dparty\imgui\imgui_tables.cpp" />
     <ClCompile Include="3dparty\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="src\common\arcball_camera.cpp" />
     <ClCompile Include="src\common\camera.cpp" />
     <ClCompile Include="src\common\freecam.cpp" />
+    <ClCompile Include="src\common\graphical_debugging.cpp" />
+    <ClCompile Include="src\common\heightmap.cpp" />
+    <ClCompile Include="src\common\light.cpp" />
     <ClCompile Include="src\common\static_mesh.cpp" />
     <ClCompile Include="src\common\input_manager.cpp" />
-    <ClCompile Include="src\common\trackball_camera.cpp" />
     <ClCompile Include="src\common\xerrori.cpp" />
     <ClCompile Include="src\main_game.cpp" />
   </ItemGroup>
@@ -44,6 +47,7 @@
     <ClInclude Include="3dparty\imgui\imstb_textedit.h" />
     <ClInclude Include="3dparty\imgui\imstb_truetype.h" />
     <ClInclude Include="src\common\aabb.h" />
+    <ClInclude Include="src\common\arcball_camera.hpp" />
     <ClInclude Include="src\common\box3.h" />
     <ClInclude Include="src\common\camera.hpp" />
     <ClInclude Include="src\common\carousel\carousel.h" />
@@ -52,6 +56,9 @@
     <ClInclude Include="src\common\debugging.h" />
     <ClInclude Include="src\common\frame_buffer_object.h" />
     <ClInclude Include="src\common\freecam.hpp" />
+    <ClInclude Include="src\common\graphical_debugging.hpp" />
+    <ClInclude Include="src\common\heightmap.hpp" />
+    <ClInclude Include="src\common\light.hpp" />
     <ClInclude Include="src\common\static_mesh.hpp" />
     <ClInclude Include="src\common\input_manager.hpp" />
     <ClInclude Include="src\common\intersection.h" />
@@ -62,15 +69,14 @@
     <ClInclude Include="src\common\simple_shapes.h" />
     <ClInclude Include="src\common\stuff.h" />
     <ClInclude Include="src\common\texture.h" />
-    <ClInclude Include="src\common\trackball_camera.hpp" />
     <ClInclude Include="src\common\view_manipulator.h" />
     <ClInclude Include="src\common\xerrori.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\CGCourse2024\src\code_11_texture_bump_mapping\shaders\texture_coords_test.frag" />
-    <None Include="..\CGCourse2024\src\code_11_texture_bump_mapping\shaders\texture_coords_test.vert" />
     <None Include="src\shaders\basic.frag" />
     <None Include="src\shaders\basic.vert" />
+    <None Include="src\shaders\debug.frag" />
+    <None Include="src\shaders\debug.vert" />
     <None Include="src\shaders\texture.frag" />
     <None Include="src\shaders\texture.vert" />
   </ItemGroup>

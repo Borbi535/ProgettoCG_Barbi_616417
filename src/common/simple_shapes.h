@@ -4,6 +4,8 @@
 #include <glm/ext.hpp>  
 #include <glm/gtx/string_cast.hpp>
 
+enum Shapes { CUBE, FRAME, LINE, CYLINDER, QUAD, RECTANGLE, TORUS, PYRAMID, ICOSAHEDRON, SPHERE, CONE, SHAPES_NUMBER };
+
 class shape {
 public:
 	std::vector<float> positions;

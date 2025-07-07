@@ -2,6 +2,12 @@
 
 #include <iostream>
 #include <map>
+
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#define GLM_ENABLE_EXPERIMENTAL 
+#endif
+
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <ext/vector_float2.hpp>
 #include <functional>

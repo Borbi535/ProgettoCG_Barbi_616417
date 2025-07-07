@@ -14,7 +14,7 @@ extern glm::mat4 view_matrix;
 //extern glm::vec2 old_mouse_position;
 //extern glm::vec2 mouse_scroll;
 
-class TrackballCamera: public Camera
+class WihCamera: public Camera
 {
 private:
 
@@ -55,10 +55,10 @@ private:
 	bool Cursor_sphere_intersection(glm::mat4 proj, glm::mat4 view, glm::vec3& int_point, double xpos, double ypos);
 
 public:
-	TrackballCamera();
-	TrackballCamera(glm::vec3 eye, glm::vec3 center, glm::vec3 up);
-	TrackballCamera(TrackballCamera& tb);
-	~TrackballCamera();
+	WihCamera();
+	WihCamera(glm::vec3 eye, glm::vec3 center, glm::vec3 up);
+	WihCamera(WihCamera& tb);
+	~WihCamera();
 
 	void Reset();
 	void Set_center_radius(glm::vec3 c, float r);

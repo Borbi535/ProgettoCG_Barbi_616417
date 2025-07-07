@@ -1,7 +1,12 @@
 #pragma once
 
 //	#include <errno.h>
+#ifndef GLM_ENABLE_EXPERIMENTAL
+#define GLM_ENABLE_EXPERIMENTAL 
+#endif
+
 #include <iostream>
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
 #define QUI __LINE__,__FILE__

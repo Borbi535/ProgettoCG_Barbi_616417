@@ -115,7 +115,7 @@ struct game_to_renderable
 				tex_coords.push_back(iz);
 			}
 
-		for (unsigned int iz = 0; iz < Z-1; ++iz) // si può inglobare questo nel ciclo sopra
+		for (unsigned int iz = 0; iz < Z-1; ++iz)
 			for (unsigned int ix = 0; ix < X-1; ++ix)
 			{
 				

@@ -1,8 +1,8 @@
-#include <trackball_camera.hpp>
+#include <wih_camera.hpp>
 
 // PRIVATE
 
-void TrackballCamera::Viewport_to_ray(glm::mat4 proj, double pX, double pY, glm::vec4& p0, glm::vec4& d)
+void WihCamera::Viewport_to_ray(glm::mat4 proj, double pX, double pY, glm::vec4& p0, glm::vec4& d)
 {
 	GLint vp[4];
 	glm::mat4 proj_inv = glm::inverse(proj);
@@ -18,7 +18,7 @@ void TrackballCamera::Viewport_to_ray(glm::mat4 proj, double pX, double pY, glm:
 	d = glm::normalize(p1 - p0);
 }
 
-bool TrackballCamera::Cursor_sphere_intersection(glm::mat4 proj, glm::mat4 view, glm::vec3& int_point, double xpos, double ypos)
+bool WihCamera::Cursor_sphere_intersection(glm::mat4 proj, glm::mat4 view, glm::vec3& int_point, double xpos, double ypos)
 {
 	glm::mat4 view_frame = glm::inverse(view);
 
@@ -40,11 +40,11 @@ bool TrackballCamera::Cursor_sphere_intersection(glm::mat4 proj, glm::mat4 view,
 
 // PUBLIC
 
-TrackballCamera::TrackballCamera() {}
+WihCamera::WihCamera() {}
 
-TrackballCamera::TrackballCamera(glm::vec3 eye, glm::vec3 center, glm::vec3 up): Camera(eye, center, up) { Reset(); old_tb_matrix = glm::mat4(1.f); }
+WihCamera::WihCamera(glm::vec3 eye, glm::vec3 center, glm::vec3 up): Camera(eye, center, up) { Reset(); old_tb_matrix = glm::mat4(1.f); }
 
-TrackballCamera::TrackballCamera(TrackballCamera& tb): Camera(tb)
+WihCamera::WihCamera(WihCamera& tb): Camera(tb)
 {
 	scaling_factor = tb.scaling_factor;
 	scaling_matrix = tb.scaling_matrix;
@@ -56,16 +56,16 @@ TrackballCamera::TrackballCamera(TrackballCamera& tb): Camera(tb)
 
 }
 
-TrackballCamera::~TrackballCamera() {}
+WihCamera::~WihCamera() {}
 
-void TrackballCamera::Reset() {
+void WihCamera::Reset() {
 	scaling_factor = 1.f;
 	scaling_matrix = glm::mat4(1.f);
 	rotation_matrix = glm::mat4(1.f);
 	translation_matrix = glm::mat4(1.f);
 }
 
-void TrackballCamera::Set_center_radius(glm::vec3 c, float r) {
+void WihCamera::Set_center_radius(glm::vec3 c, float r) {
 	old_tb_matrix = this->GetMatrix();
 	Reset();
 	center = c;
@@ -73,7 +73,7 @@ void TrackballCamera::Set_center_radius(glm::vec3 c, float r) {
 	translation_matrix = glm::translate(glm::mat4(1.f), center);
 }
 
-void TrackballCamera::MouseMove()
+void WihCamera::MouseMove()
 {
 	if (!is_trackball_dragged)
 		return;
@@ -95,7 +95,7 @@ void TrackballCamera::MouseMove()
 	}
 }
 
-void TrackballCamera::MousePress()
+void WihCamera::MousePress()
 {
 	glm::vec3 int_point;
 	if (Cursor_sphere_intersection(projection_matrix, view_matrix, int_point, input_manager::mouse_position.x, input_manager::mouse_position.y))
@@ -105,20 +105,20 @@ void TrackballCamera::MousePress()
 	}
 }
 
-void TrackballCamera::MouseRelease()
+void WihCamera::MouseRelease()
 {
 	is_trackball_dragged = false;
 }
 
-void TrackballCamera::MouseScroll()
+void WihCamera::MouseScroll()
 {
 	scaling_factor *= (float)((input_manager::mouse_scroll.y > 0) ? 1.1 : 0.97);
 	scaling_matrix = glm::scale(glm::mat4(1.f), glm::vec3(scaling_factor));
 }
 
-glm::mat4 TrackballCamera::GetMatrix() { return translation_matrix * scaling_matrix * rotation_matrix * glm::inverse(translation_matrix) * old_tb_matrix; }
+glm::mat4 WihCamera::GetMatrix() { return translation_matrix * scaling_matrix * rotation_matrix * glm::inverse(translation_matrix) * old_tb_matrix; }
 
-bool TrackballCamera::IsMoving() { return is_trackball_dragged; }
+bool WihCamera::IsMoving() { return is_trackball_dragged; }
 
 //bool TrackballCamera::IsChanged() {
 //	if (changed || is_trackball_dragged) {
@@ -128,4 +128,4 @@ bool TrackballCamera::IsMoving() { return is_trackball_dragged; }
 //	return false;
 //}
 
-float TrackballCamera::GetScalingFactor() { return scaling_factor; }
+float WihCamera::GetScalingFactor() { return scaling_factor; }
