@@ -28,6 +28,7 @@
     <ClCompile Include="3dparty\imgui\imgui_widgets.cpp" />
     <ClCompile Include="src\common\arcball_camera.cpp" />
     <ClCompile Include="src\common\camera.cpp" />
+    <ClCompile Include="src\common\car.cpp" />
     <ClCompile Include="src\common\freecam.cpp" />
     <ClCompile Include="src\common\graphical_debugging.cpp" />
     <ClCompile Include="src\common\heightmap.cpp" />
@@ -50,6 +51,7 @@
     <ClInclude Include="src\common\arcball_camera.hpp" />
     <ClInclude Include="src\common\box3.h" />
     <ClInclude Include="src\common\camera.hpp" />
+    <ClInclude Include="src\common\car.hpp" />
     <ClInclude Include="src\common\carousel\carousel.h" />
     <ClInclude Include="src\common\carousel\carousel_loader.h" />
     <ClInclude Include="src\common\carousel\carousel_to_renderable.h" />

@@ -16,8 +16,9 @@ class StaticMesh
 {
 public:
 
+	StaticMesh();
 	StaticMesh(std::string filename);
-	StaticMesh(StaticMesh& mesh);
+	StaticMesh(const StaticMesh& mesh);
 	~StaticMesh();
 
 	static void SetShader(shader& new_shader);
@@ -27,6 +28,7 @@ public:
 
 
 private:
+
 	static shader* _shader;
 
 	tinygltf::Model model; // da levare, non serve memorizzarlo
@@ -40,7 +42,7 @@ private:
 	bool CreateRenderable();
 
 	void VisitNodes(tinygltf::Node& node, glm::mat4 currT);
-	void VisitMesh(tinygltf::Mesh& mesh, glm::mat4 currT, glm::mat4 transform);
+	void VisitMesh(tinygltf::Mesh& mesh, glm::mat4 currT);
 
 	static std::string GetFilePathExtension(const std::string& FileName);
 };

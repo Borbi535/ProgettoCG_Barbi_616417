@@ -55,6 +55,10 @@ enum TextureID { GRASS, TRACK, TEX_IDS_NUMBER };
 
 enum GameState { ARCBALL_STATE, FREECAM_STATE, CAMERAMEN_STATE };
 
+shader basic_shader;
+shader texture_shader;
+shader debug_shader;
+
 glm::mat4 projection_matrix;
 glm::mat4 view_matrix;
 
@@ -65,11 +69,14 @@ Freecam freecam;
 
 matrix_stack stack;
 
-DirectionalLight sun_light;
+DirectionalLight sun_light; // da spostare nel main, 
+//da riguardare qua sotto
 float ambient_color[3] = { 0.15f,0.15f,0.15f };
 float diffuse_color[3] = { 0.5f,0.1f,0.2f };
 float specular_color[3] = { 0.5f,0.1f,0.2f };
 float shininess = 1.0f;
+
+float sun_intensity = 1;
 
 int camera_state = ARCBALL_STATE;
 bool game_paused = false;
@@ -221,14 +228,6 @@ void gui_setup()
 		ImGui::EndMenu();
 	}
 
-	if (ImGui::BeginMenu("Hide Textures"))
-	{
-		ImGui::Checkbox("Grass", &grass_texture_disabled);
-		ImGui::Checkbox("Track", &track_texture_disabled);
-
-		ImGui::EndMenu();
-	}
-
 	if (ImGui::BeginMenu("Material"))
 	{
 		ImGuiColorEditFlags misc_flags = ImGuiColorEditFlags_NoOptions;
@@ -239,8 +238,20 @@ void gui_setup()
 		ImGui::EndMenu(); 
 	}
 
+	if (ImGui::BeginMenu("Lights settings"))
+	{
+		if (ImGui::SliderFloat("Value", &sun_intensity, 0.0f, 10.0f))
+		{
+			glUniform1f(texture_shader["uSunIntensity"], sun_intensity);
+		}
+
+		ImGui::EndMenu();
+	}
+
 	if (ImGui::BeginMenu("Debug"))
 	{
+		ImGui::Checkbox("Grass", &grass_texture_disabled);
+		ImGui::Checkbox("Track", &track_texture_disabled);
 		ImGui::Checkbox("show debug shapes", &show_debug_shapes);
 
 		ImGui::EndMenu();
@@ -256,7 +267,7 @@ void gui_setup()
 			ImGui::SetWindowPos(ImVec2(1700, 18));
 			first_time_gui = false;
 		}
-		ImGui::Text(glm::to_string(input_manager::mouse_position).c_str());
+		ImGui::Text(glm::to_string(view_matrix * glm::vec4(cameras[camera_index]->GetPosition(), 1.f)).c_str());
 	}
 
 	ImGui::End();
@@ -275,6 +286,8 @@ void exit_routine()
 
 int main(int argc, char** argv)
 {
+	srand(time(NULL));
+
 	race r;
 	
 	carousel_loader::load("assets/small_test.svg", "assets/terrain_256.png",r);
@@ -319,7 +332,22 @@ int main(int argc, char** argv)
 
 	printout_opengl_glsl_info();
 
-	// textures TODO: metterle in un dizionario
+	/* define the viewport  */
+	glViewport(0, 0, 1920, 1080);
+
+	//arcball_camera = ArcballCamera(glm::vec3(0.f, 1.f, 1.5f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
+
+	projection_matrix = glm::perspective(glm::radians(45.f), 16.f / 9, 0.001f, 100.f);
+
+	cameras[ARCBALL_ID] = &arcball_camera;
+	cameras[ARCBALL_ID]->is_active = true;
+
+	arcball_camera = ArcballCamera(glm::vec3(0.f, 1.f, 1.5f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
+	freecam = Freecam(glm::vec3(0.f, 1.f, 1.5f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
+	cameras[FREECAM_ID] = &freecam;
+
+	view_matrix = cameras[camera_index]->GetViewMatrix();
+
 	texture grass_texture;
 	grass_texture.load(textures_path + "grass_tile.png", GRASS);
 	texture track_texture;
@@ -352,20 +380,27 @@ int main(int argc, char** argv)
 	r_lamps.create();
 	game_to_renderable::to_lamps(r, r_lamps);
 
+	float s = 1.f / r.bbox().diagonal();
+	glm::vec3 c = r.bbox().center();
+	glm::mat4 r_coordinates_scale_matrix = glm::scale(glm::mat4(1.f), glm::vec3(s));
+	glm::mat4 r_coordinates_translate_matrix = glm::translate(glm::mat4(1.f), -c);
+
 	std::vector<PositionalLight> positional_lights;
 	for (stick_object lamp : r.lamps())
 	{
-		glm::vec3 light_position = glm::vec4((lamp.pos + glm::vec3(0, 2.7f, 0)), 1.f);
-		positional_lights.push_back(PositionalLight(light_position, glm::vec4(0, -1, 0, 1), 10.f, 2.f, glm::vec3(0.3f, 0.3f, 0.3f)));
+		glm::vec3 light_position_WS = 
+			r_coordinates_scale_matrix *
+			r_coordinates_translate_matrix *
+			glm::vec4((lamp.pos + glm::vec3(0, 2.9f, 0)), 1.f);
+
+		positional_lights.push_back(PositionalLight(light_position_WS, 1, glm::vec3(3.f)));
 	}
 	std::vector<PositionalLightData> positional_lights_data = PositionalLight::GetLightsData();
 
-	shader basic_shader;
+	// shaders
 	basic_shader.create_program((shaders_path + "basic.vert").c_str(), (shaders_path + "basic.frag").c_str());
-	shader texture_shader;
 	texture_shader.create_program((shaders_path + "texture.vert").c_str(), (shaders_path + "texture.frag").c_str());
 	StaticMesh::SetShader(texture_shader);
-	shader debug_shader;
 	debug_shader.create_program((shaders_path + "debug.vert").c_str(), (shaders_path + "debug.frag").c_str());
 
 	// Shader Storage Buffer Object
@@ -377,24 +412,14 @@ int main(int argc, char** argv)
 	glBufferData(GL_SHADER_STORAGE_BUFFER, positional_lights_data.size() * sizeof(PositionalLightData), positional_lights_data.data(), GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-
-
-	StaticMesh car_model("assets/models/cars/bumper_car.glb");
+	// Models
 	StaticMesh streetlamp_model("assets/models/decorations/street_lamp.glb");
 	StaticMesh tree_model("assets/models/decorations/tree_3d_model_fir_spruce_pine.glb");
-	
-	/* define the viewport  */
-	glViewport(0, 0, 1920, 1080);
-
-	arcball_camera = ArcballCamera(glm::vec3(0.f, 1.f, 1.5f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
-
-	projection_matrix = glm::perspective(glm::radians(45.f), 16.f/9, 0.001f, 100.f);
-
-	cameras[ARCBALL_ID] = &arcball_camera;
-	cameras[ARCBALL_ID]->is_active = true;
-
-	freecam = Freecam(glm::vec3(0.f, 1.f, 1.5f), glm::vec3(0.f, 0.f, -1.f), glm::vec3(0.f, 1.f, 0.f));
-	cameras[FREECAM_ID] = &freecam;
+		
+	std::vector<StaticMesh> car_models;
+	car_models.push_back(StaticMesh("assets/models/cars/bumper_car.glb"));
+	car_models.push_back(StaticMesh("assets/models/cars/bugatti_type_35.glb"));
+		
 
 	glUseProgram(basic_shader.program);
 	glUniformMatrix4fv(basic_shader["uProj"], 1, GL_FALSE, &projection_matrix[0][0]);
@@ -405,7 +430,9 @@ int main(int argc, char** argv)
 	glUniformMatrix4fv(texture_shader["uProj"], 1, GL_FALSE, &projection_matrix[0][0]);
 	glUniformMatrix4fv(texture_shader["uView"], 1, GL_FALSE, &view_matrix[0][0]);
 
-	glUniform1i(texture_shader["uNumPosLights"], positional_lights.size());
+	glUniform1i(texture_shader["uNumPositionalLights"], positional_lights.size());
+	//glUniform1i(texture_shader["uNumSpotLights"], spot_lights.size());
+	glUniform1f(texture_shader["uSunIntensity"], sun_intensity);
 
 	glUseProgram(debug_shader.program);
 	glUniformMatrix4fv(debug_shader["uModel"], 1, GL_FALSE, &glm::mat4(1.0)[0][0]);
@@ -418,7 +445,7 @@ int main(int argc, char** argv)
 	r.start(11,0,0,600);
 	r.update();
 
-	sun_light = DirectionalLight(r.sunlight_direction(), glm::vec3(5.f));
+	sun_light = DirectionalLight(r.sunlight_direction(), glm::vec3(3.f));
 	
 	matrix_stack stack;
 
@@ -464,18 +491,18 @@ int main(int argc, char** argv)
 
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, positional_lights_SSBO);
 		PositionalLightData* mapped_lights = (PositionalLightData*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_WRITE_ONLY);
-
+		
 		if (mapped_lights)
 		{
 			for (unsigned int i = 0; i < positional_lights.size(); i++)
 			{
-				mapped_lights[i].position = view_matrix * glm::vec4(positional_lights[i].GetPosition(), 1.f);
-				mapped_lights[i].direction = glm::normalize(view_matrix * glm::vec4(positional_lights[i].GetDirection(), 0.f));
+				mapped_lights[i].positionVS = view_matrix * glm::vec4(positional_lights[i].GetPosition(), 1.f);
 			}
-
+		
 			glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-		}
+		}		
 		else xterminate("Errore nella apertura di positional_lights_SSBO", QUI);
+
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 		stack.load_identity();
@@ -491,11 +518,8 @@ int main(int argc, char** argv)
 		glVertex3f(r.sunlight_direction().x, r.sunlight_direction().y, r.sunlight_direction().z);
 		glEnd();
 
-		float s = 1.f/r.bbox().diagonal();
-		glm::vec3 c = r.bbox().center();
-
-		stack.mult(glm::scale(glm::mat4(1.f), glm::vec3(s)));
-		stack.mult(glm::translate(glm::mat4(1.f), -c));
+		stack.mult(r_coordinates_scale_matrix);
+		stack.mult(r_coordinates_translate_matrix);
 
 		if (grass_texture_disabled)
 		{
@@ -569,12 +593,9 @@ int main(int argc, char** argv)
 			stack.mult(r.cars()[ic].frame);
 			stack.mult(glm::translate(glm::mat4(1.f), glm::vec3(0,0.1,0.0)));
 
-			car_model.Draw(stack);
-			
-			//glUniformMatrix4fv(basic_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
-			//glUniform3f(basic_shader["uColor"], -1.f, 0.6f, 0.f);
-			//fram.bind();
-			//glDrawArrays(GL_LINES, 0, 6);
+			//car_models[rand() % car_models.size()].Draw(stack);
+			car_models[0].Draw(stack);
+
 			stack.pop();
 		}
 

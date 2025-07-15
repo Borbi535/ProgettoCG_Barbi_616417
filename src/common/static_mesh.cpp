@@ -2,6 +2,8 @@
 
 shader* StaticMesh::_shader = nullptr;
 
+StaticMesh::StaticMesh() {}
+
 StaticMesh::StaticMesh(std::string filename) : filename(filename), n_vert(0), n_tri(0)
 {
 	tinygltf::TinyGLTF loader;
@@ -34,9 +36,16 @@ StaticMesh::StaticMesh(std::string filename) : filename(filename), n_vert(0), n_
 	CreateRenderable();
 }
 
-StaticMesh::StaticMesh(StaticMesh& mesh)
+StaticMesh::StaticMesh(const StaticMesh& mesh)
 {
-	; // da implementare
+	_shader = mesh._shader;
+	model = mesh.model;
+	object = mesh.object;
+	bbox = mesh.bbox;
+	id_textures = mesh.id_textures;
+	n_vert = mesh.n_vert;
+	n_tri = mesh.n_tri;
+	filename = mesh.filename;
 }
 
 StaticMesh::~StaticMesh()
@@ -118,8 +127,8 @@ bool StaticMesh::CreateRenderable()
 	{
 		xassert(scene.nodes[i] >= 0 && scene.nodes[i] < model.nodes.size(), (std::string("Error: invalid model: " + filename)).c_str(), QUI);
 
-		static glm::mat4 currT(1.f);
-		VisitNodes(model.nodes[scene.nodes[i]], currT);
+		//static glm::mat4 currT(1.f);
+		VisitNodes(model.nodes[scene.nodes[i]], glm::mat4(1.f));
 	}
 
 	for (unsigned int ir = 0; ir < object.size(); ++ir)
@@ -141,17 +150,32 @@ void StaticMesh::VisitNodes(tinygltf::Node& node, glm::mat4 currT)
 			m[8],  m[9],  m[10], m[11],
 			m[12], m[13], m[14], m[15]
 			);
+	// GLTF specifica che se 'matrix' è presente, 'translation', 'rotation', 'scale' sono ignorati.
+	// Altrimenti, devi costruire local_transform da translation, rotation (quaternion) e scale.
+	else if (!node.translation.empty() || !node.rotation.empty() || !node.scale.empty())
+	{
+		glm::mat4 translation_mat(1.0f);
+		if (!node.translation.empty())
+			translation_mat = glm::translate(glm::mat4(1.0f), glm::vec3(node.translation[0], node.translation[1], node.translation[2]));
 
-	if (node.mesh >= 0 && node.mesh < model.meshes.size()) VisitMesh(model.meshes[node.mesh], currT, transform);
+		glm::mat4 rotation_mat(1.0f);
+		if (!node.rotation.empty())
+		{
+			// tinygltf::Node::rotation è un array di 4 double (x, y, z, w)
+			glm::quat q(node.rotation[3], node.rotation[0], node.rotation[1], node.rotation[2]);
+			rotation_mat = glm::mat4_cast(q);
+		}
 
-	if (!m.empty()) 
-		currT = currT * glm::mat4
-			(
-			m[0],  m[1],  m[2],  m[3],
-			m[4],  m[5],  m[6],  m[7],
-			m[8],  m[9],  m[10], m[11],
-			m[12], m[13], m[14], m[15]
-			);
+		glm::mat4 scale_mat(1.0f);
+		if (!node.scale.empty())
+			scale_mat = glm::scale(glm::mat4(1.0f), glm::vec3(node.scale[0], node.scale[1], node.scale[2]));
+
+		transform = translation_mat * rotation_mat * scale_mat;
+	}
+
+	currT = currT * transform;
+
+	if (node.mesh >= 0 && node.mesh < model.meshes.size()) VisitMesh(model.meshes[node.mesh], currT);
 
 	for (unsigned int i = 0; i < node.children.size(); i++)
 	{
@@ -160,7 +184,7 @@ void StaticMesh::VisitNodes(tinygltf::Node& node, glm::mat4 currT)
 	}
 }
 
-void StaticMesh::VisitMesh(tinygltf::Mesh& mesh, glm::mat4 currT, glm::mat4 transform)
+void StaticMesh::VisitMesh(tinygltf::Mesh& mesh, glm::mat4 currT)
 {
 	for (unsigned int i = 0; i < model.bufferViews.size(); i++)
 	{
@@ -180,7 +204,7 @@ void StaticMesh::VisitMesh(tinygltf::Mesh& mesh, glm::mat4 currT, glm::mat4 tran
 		object.push_back(renderable());
 		renderable& r = object.back();
 		r.create();
-		r.transform = currT * transform;
+		r.transform = currT;
 
 		for (auto& attrib : primitive.attributes)
 		{

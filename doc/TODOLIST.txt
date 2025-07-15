@@ -2,16 +2,13 @@ TOFIX:
 
 	-freecam come view_manipulation
 	-texture strada stirata bene
-	-precalcolare normali
-	-luci lampioni
-	-rifare le camera in modo che _eye sia sempre ricalcolata e vengano modificate delle matrici al suo posto quando la camera si muove
 	
 TODO:
 
-	-separare mouse scroll wheel up da wheel down
-	-imgui in file a se
-	-un file per le cameras ???
+	-precalcolare normali
 	-altri tipi di luce in light
+	-aggiungere macchine diverse
+	-verificare la posizione delle macchine, potrei averle sminchiate modificando il loader di StatiMesh.
 	
 	
 	
