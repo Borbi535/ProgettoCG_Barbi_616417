@@ -2,6 +2,7 @@ TOFIX:
 
 	-freecam come view_manipulation
 	-texture strada stirata bene
+	-il sole ha qualcosa di strano
 	
 TODO:
 
@@ -9,6 +10,7 @@ TODO:
 	-altri tipi di luce in light
 	-aggiungere macchine diverse
 	-verificare la posizione delle macchine, potrei averle sminchiate modificando il loader di StatiMesh.
+	draw.hpp o qualcosa del genere per disegnare efficientemente (tipo prima aggiornare (SSBO incluso) tutto poi disegnare tutto)
 	
 	
 	

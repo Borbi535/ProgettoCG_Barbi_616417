@@ -13,7 +13,6 @@
 #include <string>
 #include <iostream>
 #include <xerrori.hpp>
-#include <iostream>
 #include <time.h>
 #include <Windows.h>
 #include <algorithm>
@@ -26,7 +25,8 @@
 #define TINYGLTF_IMPLEMENTATION
 #define TINYGLTF_NO_INCLUDE_STB_IMAGE
 
-#include "static_mesh.hpp"
+#include "mesh_3d.hpp"
+#include "body_3d.hpp"
 #include "heightmap.hpp"
 
 #include "renderable.h"
@@ -240,7 +240,7 @@ void gui_setup()
 
 	if (ImGui::BeginMenu("Lights settings"))
 	{
-		if (ImGui::SliderFloat("Value", &sun_intensity, 0.0f, 10.0f))
+		if (ImGui::SliderFloat("Value", &sun_intensity, 0.0f, 2.0f))
 		{
 			glUniform1f(texture_shader["uSunIntensity"], sun_intensity);
 		}
@@ -384,42 +384,59 @@ int main(int argc, char** argv)
 	glm::vec3 c = r.bbox().center();
 	glm::mat4 r_coordinates_scale_matrix = glm::scale(glm::mat4(1.f), glm::vec3(s));
 	glm::mat4 r_coordinates_translate_matrix = glm::translate(glm::mat4(1.f), -c);
-
-	std::vector<PositionalLight> positional_lights;
-	for (stick_object lamp : r.lamps())
-	{
-		glm::vec3 light_position_WS = 
-			r_coordinates_scale_matrix *
-			r_coordinates_translate_matrix *
-			glm::vec4((lamp.pos + glm::vec3(0, 2.9f, 0)), 1.f);
-
-		positional_lights.push_back(PositionalLight(light_position_WS, 1, glm::vec3(3.f)));
-	}
-	std::vector<PositionalLightData> positional_lights_data = PositionalLight::GetLightsData();
+		
 
 	// shaders
 	basic_shader.create_program((shaders_path + "basic.vert").c_str(), (shaders_path + "basic.frag").c_str());
 	texture_shader.create_program((shaders_path + "texture.vert").c_str(), (shaders_path + "texture.frag").c_str());
-	StaticMesh::SetShader(texture_shader);
+	Mesh3D::SetShader(texture_shader);
 	debug_shader.create_program((shaders_path + "debug.vert").c_str(), (shaders_path + "debug.frag").c_str());
-
-	// Shader Storage Buffer Object
-	GLuint positional_lights_SSBO;
-	glGenBuffers(1, &positional_lights_SSBO);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, positional_lights_SSBO);
-
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, positional_lights_SSBO);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, positional_lights_data.size() * sizeof(PositionalLightData), positional_lights_data.data(), GL_DYNAMIC_DRAW);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-
+	
 	// Models
-	StaticMesh streetlamp_model("assets/models/decorations/street_lamp.glb");
-	StaticMesh tree_model("assets/models/decorations/tree_3d_model_fir_spruce_pine.glb");
+	Mesh3D streetlamp_model("assets/models/decorations/street_lamp.glb");
+	Mesh3D tree_model("assets/models/decorations/tree_3d_model_fir_spruce_pine.glb", .4f);
 		
-	std::vector<StaticMesh> car_models;
-	car_models.push_back(StaticMesh("assets/models/cars/bumper_car.glb"));
-	car_models.push_back(StaticMesh("assets/models/cars/bugatti_type_35.glb"));
-		
+	std::vector<Mesh3D> car_models;
+	car_models.push_back(Mesh3D("assets/models/cars/bumper_car.glb", .8f));
+	car_models.push_back(Mesh3D("assets/models/cars/bugatti_type_35.glb", .2f));
+	
+	// 3D Bodies
+	std::vector<Body3D> tree_bodies;
+	for (stick_object tree : r.trees())
+		tree_bodies.push_back(Body3D(glm::translate(glm::mat4(1.f), tree.pos), tree_model));
+
+	std::vector<Body3D> streetlamp_bodies;
+	for (stick_object lamp : r.lamps())
+	{
+		streetlamp_bodies.push_back(Body3D(r_coordinates_scale_matrix * r_coordinates_translate_matrix * glm::translate(glm::mat4(1.f), lamp.pos), streetlamp_model));
+		//glm::vec3 light_pos = streetlamp_bodies.back().GetModelMatrix() * glm::vec4(0, 2.9f, 0, 1.f);
+			//r_coordinates_scale_matrix * r_coordinates_translate_matrix * glm::vec4(lamp.pos + glm::vec3(0, 2.9f, 0), 1.f);
+		// light pos è corretto
+		//std::cout << "Light position: " << glm::to_string(light_pos) << std::endl << "Lamp position: " << glm::to_string(streetlamp_bodies.back().GetModelMatrix() * glm::vec4(0,0,0,1)) << std::endl;
+		streetlamp_bodies.back().AddLight(PositionalLight::Create(glm::vec3(0, 2.9f, 0), 1.f, glm::vec3(3.f)));
+	}
+	// Clone
+	std::vector<Body3D> car_bodies;
+	for (unsigned int i = 0; i < r.cars().size(); ++i)
+	{
+		car_bodies.push_back(Body3D(
+			glm::translate(r.cars()[i].frame, glm::vec3(0.f, 0.1f, 0.f)) * r.cars()[i].frame,
+			car_models[rand() % car_models.size()]));
+		 car_bodies.back().AddLight(std::make_unique<SpotLight>(glm::vec3(0, 0, -1.f), glm::vec3(0, 0, -1.f), 30.f, 5.f, glm::vec3(1)));
+	}
+
+	// SSBOs
+	PositionalLight::GenerateSSBO();
+
+	std::vector<SpotLightSSBOData> spotlights_data = SpotLight::GetLightsData();
+
+	GLuint spotlights_SSBO;
+	glGenBuffers(1, &spotlights_SSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, spotlights_SSBO);
+
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, spotlights_SSBO);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, spotlights_data.size() * sizeof(PositionalLightSSBOData), spotlights_data.data(), GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 	glUseProgram(basic_shader.program);
 	glUniformMatrix4fv(basic_shader["uProj"], 1, GL_FALSE, &projection_matrix[0][0]);
@@ -430,8 +447,8 @@ int main(int argc, char** argv)
 	glUniformMatrix4fv(texture_shader["uProj"], 1, GL_FALSE, &projection_matrix[0][0]);
 	glUniformMatrix4fv(texture_shader["uView"], 1, GL_FALSE, &view_matrix[0][0]);
 
-	glUniform1i(texture_shader["uNumPositionalLights"], positional_lights.size());
-	//glUniform1i(texture_shader["uNumSpotLights"], spot_lights.size());
+	glUniform1i(texture_shader["uNumPositionalLights"], PositionalLight::GetNumberOfLights());
+	glUniform1i(texture_shader["uNumSpotLights"], SpotLight::GetNumberOfLights());
 	glUniform1f(texture_shader["uSunIntensity"], sun_intensity);
 
 	glUseProgram(debug_shader.program);
@@ -462,11 +479,25 @@ int main(int argc, char** argv)
 
 		check_gl_errors(QUI);
 
-		if (!game_paused) r.update();
+		view_matrix = cameras[camera_index]->GetViewMatrix();
+
+		// Update
+		if (!game_paused)
+		{
+			r.update();
+
+			PositionalLight::UpdateSSBO();
+
+			for (unsigned int i = 0; i < r.cars().size(); ++i)
+			{
+				car_bodies[i].SetModelMatrix(r.cars()[i].frame);
+				car_bodies[i].UpdateLights();
+			}
+
+			SpotLight::UpdateLightsData(spotlights_SSBO);
+		}
 
 		sun_light.SetDirection(r.sunlight_direction());
-
-		view_matrix = cameras[camera_index]->GetViewMatrix();
 
 		glUseProgram(texture_shader.program);
 		glUniformMatrix4fv(texture_shader["uView"], 1, GL_FALSE, &view_matrix[0][0]);
@@ -488,23 +519,7 @@ int main(int argc, char** argv)
 		
 		glUseProgram(basic_shader.program);
 		glUniformMatrix4fv(basic_shader["uView"], 1, GL_FALSE, &view_matrix[0][0]);
-
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, positional_lights_SSBO);
-		PositionalLightData* mapped_lights = (PositionalLightData*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_WRITE_ONLY);
 		
-		if (mapped_lights)
-		{
-			for (unsigned int i = 0; i < positional_lights.size(); i++)
-			{
-				mapped_lights[i].positionVS = view_matrix * glm::vec4(positional_lights[i].GetPosition(), 1.f);
-			}
-		
-			glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-		}		
-		else xterminate("Errore nella apertura di positional_lights_SSBO", QUI);
-
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-
 		stack.load_identity();
 		stack.push();
 		glUniformMatrix4fv(basic_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
@@ -518,6 +533,7 @@ int main(int argc, char** argv)
 		glVertex3f(r.sunlight_direction().x, r.sunlight_direction().y, r.sunlight_direction().z);
 		glEnd();
 
+		stack.push();
 		stack.mult(r_coordinates_scale_matrix);
 		stack.mult(r_coordinates_translate_matrix);
 
@@ -553,8 +569,6 @@ int main(int argc, char** argv)
 			glDepthRange(0.0, 1);
 			glBindTexture(GL_TEXTURE_2D, 0);
 
-			//std::cout << stack.m() << std::endl;
-
 			glUseProgram(basic_shader.program);
 		}
 		
@@ -585,16 +599,21 @@ int main(int argc, char** argv)
 
 		glUseProgram(texture_shader.program);
 
+		// per i Body3D r_coordinates_scale_matrix e r_coordinates_translate_matrix sono già applicati
+		stack.pop();
+
 		// macchine
-		for (unsigned int ic = 0; ic < r.cars().size(); ++ic) 
+		for (Body3D car : car_bodies)
 		{
-
 			stack.push();
-			stack.mult(r.cars()[ic].frame);
-			stack.mult(glm::translate(glm::mat4(1.f), glm::vec3(0,0.1,0.0)));
+			car.Draw(stack);
 
-			//car_models[rand() % car_models.size()].Draw(stack);
-			car_models[0].Draw(stack);
+			if (show_debug_shapes)
+			{
+				GraphicalDebugObject debug_cube = GraphicalDebugObject(CUBE);
+				stack.mult(glm::translate(glm::mat4(1), glm::vec3(0, 0, -1.f)));
+				debug_cube.Draw(stack, texture_shader, .4f);
+			}
 
 			stack.pop();
 		}
@@ -619,48 +638,22 @@ int main(int argc, char** argv)
 
 		// alberi
 		glUseProgram(texture_shader.program);
-		for (stick_object tree : r.trees())
+		for (Body3D tree : tree_bodies)
 		{
 			stack.push();
-			stack.mult(glm::translate(glm::mat4(1), tree.pos));
-			
-			tree_model.Draw(stack, .5f);
-
+			tree.Draw(stack);
 			stack.pop();
 		}
-
-		//r_trees.bind();
-		//glUniform3f(basic_shader["uColor"], 0.f, 1.0f, 0.f);
-		//glDrawArrays(GL_LINES, 0, r_trees.vn);
-		
-
 		check_gl_errors(QUI);
 
 		// lampioni
-		for (stick_object lamp : r.lamps())
+		for (Body3D lamp : streetlamp_bodies)
 		{
-			glUseProgram(texture_shader.program);
 			stack.push();
-			stack.mult(glm::translate(glm::mat4(1), lamp.pos));
-
-			streetlamp_model.Draw(stack);
-
-			if (show_debug_shapes)
-			{
-				GraphicalDebugObject debug_lamps = GraphicalDebugObject(CUBE);
-				stack.mult(glm::translate(glm::mat4(1), glm::vec3(0, 2.7f, 0)));
-				debug_lamps.Draw(stack, basic_shader, .2f);
-			}
-
+			lamp.Draw(stack);
 			stack.pop();
 		}
-
 		check_gl_errors(QUI);
-
-		//r_lamps.bind();
-		//glUniform3f(basic_shader["uColor"], 1.f, 1.0f, 0.f);
-		//glDrawArrays(GL_LINES, 0, r_lamps.vn);
-		
 
 		stack.pop();
 

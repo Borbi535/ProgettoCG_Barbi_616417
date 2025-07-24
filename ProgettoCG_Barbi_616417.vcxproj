@@ -28,12 +28,12 @@
     <ClCompile Include="3dparty\imgui\imgui_widgets.cpp" />
     <ClCompile Include="src\common\arcball_camera.cpp" />
     <ClCompile Include="src\common\camera.cpp" />
-    <ClCompile Include="src\common\car.cpp" />
+    <ClCompile Include="src\common\body_3d.cpp" />
     <ClCompile Include="src\common\freecam.cpp" />
     <ClCompile Include="src\common\graphical_debugging.cpp" />
     <ClCompile Include="src\common\heightmap.cpp" />
     <ClCompile Include="src\common\light.cpp" />
-    <ClCompile Include="src\common\static_mesh.cpp" />
+    <ClCompile Include="src\common\mesh_3d.cpp" />
     <ClCompile Include="src\common\input_manager.cpp" />
     <ClCompile Include="src\common\xerrori.cpp" />
     <ClCompile Include="src\main_game.cpp" />
@@ -51,7 +51,7 @@
     <ClInclude Include="src\common\arcball_camera.hpp" />
     <ClInclude Include="src\common\box3.h" />
     <ClInclude Include="src\common\camera.hpp" />
-    <ClInclude Include="src\common\car.hpp" />
+    <ClInclude Include="src\common\body_3d.hpp" />
     <ClInclude Include="src\common\carousel\carousel.h" />
     <ClInclude Include="src\common\carousel\carousel_loader.h" />
     <ClInclude Include="src\common\carousel\carousel_to_renderable.h" />
@@ -61,7 +61,7 @@
     <ClInclude Include="src\common\graphical_debugging.hpp" />
     <ClInclude Include="src\common\heightmap.hpp" />
     <ClInclude Include="src\common\light.hpp" />
-    <ClInclude Include="src\common\static_mesh.hpp" />
+    <ClInclude Include="src\common\mesh_3d.hpp" />
     <ClInclude Include="src\common\input_manager.hpp" />
     <ClInclude Include="src\common\intersection.h" />
     <ClInclude Include="src\common\matrix_stack.h" />

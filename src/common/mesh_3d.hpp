@@ -12,19 +12,19 @@
 #include "matrix_stack.h"
 #include "shaders.h"
 
-class StaticMesh
+class Mesh3D
 {
 public:
+	std::vector<glm::vec3> light_local_positions;
 
-	StaticMesh();
-	StaticMesh(std::string filename);
-	StaticMesh(const StaticMesh& mesh);
-	~StaticMesh();
+	Mesh3D();
+	Mesh3D(std::string filename, float scale = 1.f);
+	Mesh3D(const Mesh3D& mesh);
+	~Mesh3D();
 
 	static void SetShader(shader& new_shader);
 
-	/// <summary>Draw the mesh.</summary>
-	void Draw(matrix_stack& stack, float scale = 1.f);
+	void Draw(matrix_stack& stack) const;
 
 
 private:
@@ -36,6 +36,7 @@ private:
 	box3 bbox;
 	std::vector<GLuint> id_textures;
 	int n_vert, n_tri;
+	float scale;
 
 	std::string filename;
 

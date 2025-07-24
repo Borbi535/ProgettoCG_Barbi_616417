@@ -45,17 +45,19 @@ GraphicalDebugObject::GraphicalDebugObject(Shapes shape_type)
 
 renderable GraphicalDebugObject::GetRenderable() { return shape; }
 
-void GraphicalDebugObject::Draw(matrix_stack& stack, shader& _shader, float scale)
+void GraphicalDebugObject::Draw(matrix_stack& stack, shader& active_shader, float scale)
 {
-    glUseProgram(_shader.program);
+    glUseProgram(texture_shader.program);
 
     shape.bind();
     stack.push();
     stack.mult(shape.transform);
     if (scale != 1.f) stack.mult(glm::scale(glm::mat4(1), glm::vec3(scale)));
 
-    glUniformMatrix4fv(_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
+    glUniformMatrix4fv(texture_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
 
     glDrawElements(shape().mode, shape().count, shape().itype, 0);
     stack.pop();
+
+	glUseProgram(active_shader.program);
 }

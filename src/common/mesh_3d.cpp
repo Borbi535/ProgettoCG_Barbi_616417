@@ -1,10 +1,10 @@
-#include <static_mesh.hpp>
+#include <mesh_3d.hpp>
 
-shader* StaticMesh::_shader = nullptr;
+shader* Mesh3D::_shader = nullptr;
 
-StaticMesh::StaticMesh() {}
+Mesh3D::Mesh3D() {}
 
-StaticMesh::StaticMesh(std::string filename) : filename(filename), n_vert(0), n_tri(0)
+Mesh3D::Mesh3D(std::string filename, float scale) : filename(filename), n_vert(0), n_tri(0), scale(scale)
 {
 	tinygltf::TinyGLTF loader;
 	std::string err, warn;
@@ -36,7 +36,7 @@ StaticMesh::StaticMesh(std::string filename) : filename(filename), n_vert(0), n_
 	CreateRenderable();
 }
 
-StaticMesh::StaticMesh(const StaticMesh& mesh)
+Mesh3D::Mesh3D(const Mesh3D& mesh)
 {
 	_shader = mesh._shader;
 	model = mesh.model;
@@ -45,17 +45,18 @@ StaticMesh::StaticMesh(const StaticMesh& mesh)
 	id_textures = mesh.id_textures;
 	n_vert = mesh.n_vert;
 	n_tri = mesh.n_tri;
+	scale = mesh.scale;
 	filename = mesh.filename;
 }
 
-StaticMesh::~StaticMesh()
+Mesh3D::~Mesh3D()
 {
-	; // da implementare
+	;
 }
 
-void StaticMesh::SetShader(shader& new_shader) { StaticMesh::_shader = &new_shader; }
+void Mesh3D::SetShader(shader& new_shader) { Mesh3D::_shader = &new_shader; }
 
-void StaticMesh::Draw(matrix_stack& stack, float scale)
+void Mesh3D::Draw(matrix_stack& stack) const
 {
 	for (renderable obj : object)
 	{
@@ -64,17 +65,17 @@ void StaticMesh::Draw(matrix_stack& stack, float scale)
 		stack.mult(obj.transform);
 		if (scale != 1.f) stack.mult(glm::scale(glm::mat4(1), glm::vec3(scale)));
 
-		glUniform4f((*StaticMesh::_shader)["uColor"], obj.mater.base_color_factor[0], obj.mater.base_color_factor[1], obj.mater.base_color_factor[2], obj.mater.base_color_factor[3]);
-		glUniform1i((*StaticMesh::_shader)["uTextureAvailable"], obj.mater.use_texture);
+		glUniform4f((*Mesh3D::_shader)["uColor"], obj.mater.base_color_factor[0], obj.mater.base_color_factor[1], obj.mater.base_color_factor[2], obj.mater.base_color_factor[3]);
+		glUniform1i((*Mesh3D::_shader)["uTextureAvailable"], obj.mater.use_texture);
 		glBindTexture(GL_TEXTURE_2D, obj.mater.base_color_texture);
-		glUniformMatrix4fv((*StaticMesh::_shader)["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
+		glUniformMatrix4fv((*Mesh3D::_shader)["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
 
 		glDrawElements(obj().mode, obj().count, obj().itype, 0);
 		stack.pop();
 	}
 }
 
-bool StaticMesh::CreateRenderable()
+bool Mesh3D::CreateRenderable()
 {
 	// load texture
 	for (unsigned int it = 0; it < model.textures.size(); ++it)
@@ -138,7 +139,7 @@ bool StaticMesh::CreateRenderable()
 	return true;
 }
 
-void StaticMesh::VisitNodes(tinygltf::Node& node, glm::mat4 currT)
+void Mesh3D::VisitNodes(tinygltf::Node& node, glm::mat4 currT)
 {
 	const std::vector<double>& m = node.matrix;
 	glm::mat4 transform(1.f);
@@ -184,7 +185,7 @@ void StaticMesh::VisitNodes(tinygltf::Node& node, glm::mat4 currT)
 	}
 }
 
-void StaticMesh::VisitMesh(tinygltf::Mesh& mesh, glm::mat4 currT)
+void Mesh3D::VisitMesh(tinygltf::Mesh& mesh, glm::mat4 currT)
 {
 	for (unsigned int i = 0; i < model.bufferViews.size(); i++)
 	{
@@ -311,7 +312,7 @@ void StaticMesh::VisitMesh(tinygltf::Mesh& mesh, glm::mat4 currT)
 	}
 }
 
-std::string StaticMesh::GetFilePathExtension(const std::string& FileName)
+std::string Mesh3D::GetFilePathExtension(const std::string& FileName)
 {
 	if (FileName.find_last_of(".") != std::string::npos) return FileName.substr(FileName.find_last_of(".") + 1);
 	else return "";

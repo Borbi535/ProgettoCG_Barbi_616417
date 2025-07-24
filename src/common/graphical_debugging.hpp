@@ -6,6 +6,8 @@
 //#include <renderable.h>
 #include <simple_shapes.h>
 
+extern shader texture_shader;
+
 class GraphicalDebugObject
 {
 public:
@@ -13,7 +15,7 @@ public:
 	
 	renderable GetRenderable();
 
-	void Draw(matrix_stack& stack, shader& _shader, float scale = 1.f);
+	void Draw(matrix_stack& stack, shader& active_shader, float scale = 1.f);
 
 private:
 	renderable shape;

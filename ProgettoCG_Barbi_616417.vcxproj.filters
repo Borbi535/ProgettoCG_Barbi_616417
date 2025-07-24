@@ -57,7 +57,7 @@
     <ClCompile Include="src\common\freecam.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\common\static_mesh.cpp">
+    <ClCompile Include="src\common\mesh_3d.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\common\light.cpp">
@@ -72,7 +72,7 @@
     <ClCompile Include="src\common\arcball_camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\common\car.cpp">
+    <ClCompile Include="src\common\body_3d.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -161,7 +161,7 @@
     <ClInclude Include="src\common\carousel\carousel_to_renderable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\common\static_mesh.hpp">
+    <ClInclude Include="src\common\mesh_3d.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\common\light.hpp">
@@ -176,7 +176,7 @@
     <ClInclude Include="src\common\arcball_camera.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\common\car.hpp">
+    <ClInclude Include="src\common\body_3d.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
