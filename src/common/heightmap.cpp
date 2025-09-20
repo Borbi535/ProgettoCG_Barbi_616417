@@ -28,6 +28,29 @@ void height_map::set_bounding_rect(float minX, float minZ, float maxX, float max
 {
 	bounding_rect[0] = minX; bounding_rect[1] = minZ;
 	bounding_rect[2] = maxX; bounding_rect[3] = maxZ;
+	aabb = AABB(glm::vec3(minX, 0.f, minZ), glm::vec3(maxX, 0.f, maxZ));
+}
+
+void height_map::apply_matrix(glm::mat4 matrix)
+{
+	aabb.ApplyMatrix(matrix);
+
+	for (int i = 0; i < size[1]; i++)
+		for (int j = 0; j < size[0]; j++)
+		{
+			glm::vec4 p = 
+				matrix * glm::vec4(
+					bounding_rect[0] + (j / float(size[0])) * bounding_rect[2],
+					_height[i][j],
+					bounding_rect[1] + (i / float(size[1])) * bounding_rect[3], 1.f);
+
+			_height[i][j] = p.y;
+		}
+
+	bounding_rect[0] = aabb.getMin().x;
+	bounding_rect[1] = aabb.getMin().z;
+	bounding_rect[2] = aabb.getMax().x;
+	bounding_rect[3] = aabb.getMax().z;
 }
 
 void height_map::resize(int sizeX, int sizeY)

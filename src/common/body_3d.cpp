@@ -19,7 +19,7 @@ void Body3D::AddLight(std::shared_ptr<Light> light)
 {
 	std::shared_ptr<Light> light_ = light;
 	lights.push_back(light_);
-	light_->SetPosition(_model_matrix * glm::vec4(light_->GetPosition(), 1.f));
+	light_->UpdatePointsAndVectors(_model_matrix);
 }
 
 void Body3D::Rotate(glm::vec3 axis, float angle)
@@ -29,15 +29,18 @@ void Body3D::Rotate(glm::vec3 axis, float angle)
 
 void Body3D::Draw(matrix_stack& stack)
 {
+	stack.push();
 	stack.mult(_model_matrix);
-
 	_mesh.Draw(stack);
+	stack.pop();
 }
 
 void Body3D::UpdateLights()
 {
-	for (const auto& light : lights)
-		light->SetPosition(_model_matrix * glm::vec4(light->GetPosition(), 1.f));
+	for (const std::shared_ptr<Light> light : lights)
+	{
+		light->UpdatePointsAndVectors(_model_matrix);
+	}
 }
 
 glm::mat4 Body3D::GetModelMatrix() const { return _model_matrix; }

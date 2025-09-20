@@ -3,15 +3,14 @@ TOFIX:
 	-freecam come view_manipulation
 	-texture strada stirata bene
 	-il sole ha qualcosa di strano
+	-luci macchine
 	
 TODO:
 
 	-precalcolare normali
-	-altri tipi di luce in light
 	-aggiungere macchine diverse
-	-verificare la posizione delle macchine, potrei averle sminchiate modificando il loader di StatiMesh.
-	draw.hpp o qualcosa del genere per disegnare efficientemente (tipo prima aggiornare (SSBO incluso) tutto poi disegnare tutto)
-	
+	-depth map
+	-capire perchè cazzo si riempie la ram di merda
 	
 	
 		

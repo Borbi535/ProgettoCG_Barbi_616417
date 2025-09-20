@@ -34,6 +34,7 @@ Mesh3D::Mesh3D(std::string filename, float scale) : filename(filename), n_vert(0
 	}
 
 	CreateRenderable();
+	aabb = AABB(bbox.min, bbox.max);
 }
 
 Mesh3D::Mesh3D(const Mesh3D& mesh)
@@ -54,6 +55,11 @@ Mesh3D::~Mesh3D()
 	;
 }
 
+AABB Mesh3D::GetAABB() const
+{
+	return aabb;
+}
+
 void Mesh3D::SetShader(shader& new_shader) { Mesh3D::_shader = &new_shader; }
 
 void Mesh3D::Draw(matrix_stack& stack) const
@@ -65,9 +71,14 @@ void Mesh3D::Draw(matrix_stack& stack) const
 		stack.mult(obj.transform);
 		if (scale != 1.f) stack.mult(glm::scale(glm::mat4(1), glm::vec3(scale)));
 
-		glUniform4f((*Mesh3D::_shader)["uColor"], obj.mater.base_color_factor[0], obj.mater.base_color_factor[1], obj.mater.base_color_factor[2], obj.mater.base_color_factor[3]);
-		glUniform1i((*Mesh3D::_shader)["uTextureAvailable"], obj.mater.use_texture);
-		glBindTexture(GL_TEXTURE_2D, obj.mater.base_color_texture);
+		if ((*Mesh3D::_shader).has_uniform("uColor"))
+			glUniform4f((*Mesh3D::_shader)["uColor"], obj.mater.base_color_factor[0], obj.mater.base_color_factor[1], obj.mater.base_color_factor[2], obj.mater.base_color_factor[3]);
+
+		if ((*Mesh3D::_shader).has_uniform("uTextureAvailable"))
+		{
+			glUniform1i((*Mesh3D::_shader)["uTextureAvailable"], obj.mater.use_texture);
+			glBindTexture(GL_TEXTURE_2D, obj.mater.base_color_texture);
+		}
 		glUniformMatrix4fv((*Mesh3D::_shader)["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
 
 		glDrawElements(obj().mode, obj().count, obj().itype, 0);

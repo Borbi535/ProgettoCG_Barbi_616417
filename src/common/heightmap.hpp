@@ -4,6 +4,7 @@
 #include <glm.hpp>
 #include <renderable.h>
 #include <xerrori.hpp>
+#include <aabb.h>
 
 
 struct height_map
@@ -14,6 +15,7 @@ struct height_map
 
 		/// rectangle in xz where the terrain is located {minx,minz,sizex,sizez}
 		float bounding_rect[4];
+		AABB aabb;
 
 
 	public:
@@ -22,6 +24,7 @@ struct height_map
 		~height_map();
 		void set_value(float height, int x, int y);
 		void set_bounding_rect(float minX, float minZ, float maxX, float maxZ);
+		void apply_matrix(glm::mat4 matrix);
 		void resize(int sizeX, int sizeY);
 		void load_from_file(std::string filename);
 		renderable to_renderable(renderable& r);

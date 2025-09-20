@@ -75,6 +75,9 @@
     <ClCompile Include="src\common\body_3d.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\common\shadowmap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\common\aabb.h">
@@ -84,9 +87,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\common\debugging.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\common\frame_buffer_object.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\common\intersection.h">
@@ -179,6 +179,9 @@
     <ClInclude Include="src\common\body_3d.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\common\shadowmap.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\shaders\basic.frag">
@@ -197,6 +200,12 @@
       <Filter>shaders</Filter>
     </None>
     <None Include="src\shaders\debug.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="src\shaders\depth.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="src\shaders\depth.frag">
       <Filter>shaders</Filter>
     </None>
   </ItemGroup>

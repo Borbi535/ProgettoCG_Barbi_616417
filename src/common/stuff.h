@@ -6,6 +6,13 @@ extern glm::vec2 window_center;
 extern glm::mat4 projection_matrix;
 extern glm::mat4 view_matrix;
 
+
+struct Plane
+{
+	glm::vec3 normal;
+	float distance; // distanza dall'origine al piano lungo la normale
+};
+
 /// <summary>
 /// Teorema di Pitagora, se hypotenuse = true, allora il parametro l1 deve essere l'ipotenusa
 /// </summary>

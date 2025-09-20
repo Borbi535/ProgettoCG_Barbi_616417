@@ -169,10 +169,10 @@ struct  terrain {
 class race {
 	friend carousel_loader; // https://learn.microsoft.com/en-us/cpp/cpp/friend-cpp?view=msvc-170
 public:
-	race():sim_time_ratio(60){}
+	race() :sim_time_ratio(60) {}
 
 	/// bounding box of the whole scene
-	const box3& bbox() const {	return _bbox;}
+	const box3& bbox() const { return _bbox; }
 
 	/// terrain height field
 	const terrain& ter() const { return _ter; }
@@ -184,17 +184,17 @@ public:
 	const glm::vec3& sunlight_direction() const { return _sunlight_direction; }
 
 	/// a vector of trees
-	const std::vector<stick_object> & trees() const { return _trees;    }
+	const std::vector<stick_object>& trees() const { return _trees; }
 
 	/// a vector of lamps
-	const std::vector<stick_object> & lamps() const { return _lamps;    }
+	const std::vector<stick_object>& lamps() const { return _lamps; }
 
 	/// a vector of cameramen
-	const std::vector<cameraman>& cameramen() const { return _cameramen;}
+	const std::vector<cameraman>& cameramen() const { return _cameramen; }
 
 	/// a vector of cars
-	const std::vector<car>  &          cars() const { return _cars;     }
-	 
+	const std::vector<car>& cars() const { return _cars; }
+
 private:
 	box3 _bbox;
 	terrain _ter;
@@ -214,27 +214,27 @@ private:
 	int sim_time;
 
 	/// how long a real second in simulated sunlight time
-	int sim_time_ratio; 
+	int sim_time_ratio;
 
 public:
-	/**   
+	/**
 	 * starts the carousel
-	 * @param hour  
-	 * @param minute  
-	 * @param second  
+	 * @param hour
+	 * @param minute
+	 * @param second
 	 * @param ratio between the actual time and the simulated time for the sunlight direction
 	 */
-	void start( int h = -1, int m = -1, int s = -1, int _sim_time_ratio = 60) {
+	void start(int h = -1, int m = -1, int s = -1, int _sim_time_ratio = 60) {
 		clock_start = clock();
-		if (h != -1) 
+		if (h != -1)
 			sim_time = (s + m * 60 + h * 3600) * 1000;
 		else
-			sim_time = ( 10 * 3600) * 1000; // start at ten in the morning
+			sim_time = (10 * 3600) * 1000; // start at ten in the morning
 		if (_sim_time_ratio != 60)
 			sim_time_ratio = _sim_time_ratio;
 	}
 
-	/**   
+	/**
 	* add a car to the carousel
 	* @param id_path add it to a specific path
 	* @param delta shift the starting point along the path
@@ -244,24 +244,24 @@ public:
 			std::cout << "car path > " << carpaths.size() - 1 << "\n";
 			exit(-1);
 		}
-		car c; 
+		car c;
 		c.box.add(glm::vec3(-1, 1.5, -2));
-		c.box.add(glm::vec3( 1, 0,    2));
+		c.box.add(glm::vec3(1, 0, 2));
 		c.id_path = id_path;
-		 
-		c.delta_i = (int) floor(((delta == -1) ? rand() / float(RAND_MAX):delta) * (carpaths[id_path].frames.size() - 2));
+
+		c.delta_i = (int)floor(((delta == -1) ? rand() / float(RAND_MAX) : delta) * (carpaths[id_path].frames.size() - 2));
 
 		_cars.push_back(c);
 	}
 
 	/**
 	 * add a car to the carousel.
-	 * 
+	 *
 	 * @param delta shift the starting point along the path
 	 */
 	void add_car(float delta = -1) {
-		int id = (int) floor((rand() / float(RAND_MAX)) *  carpaths.size());
-		add_car(id,delta);
+		int id = (int)floor((rand() / float(RAND_MAX)) * carpaths.size());
+		add_car(id, delta);
 	}
 
 	/**
@@ -269,16 +269,16 @@ public:
 	 * */
 	void update() {
 		int cs = clock() - clock_start;
-		for (size_t i = 0; i < _cars.size();++i) {
-			int ii = ((int)((cs) / 1000.f * 30.f)+ _cars[i].delta_i) % carpaths[_cars[i].id_path].frames.size();
+		for (size_t i = 0; i < _cars.size(); ++i) {
+			int ii = ((int)((cs) / 1000.f * 30.f) + _cars[i].delta_i) % carpaths[_cars[i].id_path].frames.size();
 			//std::cout << ii << std::endl;
 			_cars[i].frame = carpaths[_cars[i].id_path].frames[ii];
 		}
 		int day_ms = 3600000 * 24;
-		 
-		int daytime = (  this->sim_time + cs * sim_time_ratio) % (day_ms);
+
+		int daytime = (this->sim_time + cs * sim_time_ratio) % (day_ms);
 		glm::mat4 R = glm::rotate(glm::mat4(1.f), glm::radians(360.f * daytime / float(day_ms)), glm::vec3(1, 0, 0));
-		_sunlight_direction = R * glm::vec4(0.f, -1.f, 0.f,0.f);
+		_sunlight_direction = R * glm::vec4(0.f, -1.f, 0.f, 0.f);
 
 		// update cameramen frames
 		for (unsigned int ic = 0; ic < _cameramen.size(); ++ic) {
@@ -307,6 +307,15 @@ public:
 		}
 	}
 
+	void apply_matrix_to_track(glm::mat4 matrix)
+	{
+		// come documentato nella definizione di track, le due curbs hanno lo stesso numero di punti
+		for (int i = 0; i < _t.curbs[0].size(); i++)
+		{
+			_t.curbs[0][i] = matrix * glm::vec4(_t.curbs[0][i], 1.f);
+			_t.curbs[1][i] = matrix * glm::vec4(_t.curbs[1][i], 1.f);
+		}
+	}
 };
 
 

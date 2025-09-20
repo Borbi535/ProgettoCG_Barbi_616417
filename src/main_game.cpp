@@ -42,6 +42,7 @@
 #include "freecam.hpp"
 #include "texture.h"
 #include "light.hpp"
+#include "shadowmap.hpp"
 
 #include "carousel\carousel.h"
 #include "carousel\carousel_to_renderable.h"
@@ -51,12 +52,21 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 
-enum TextureID { GRASS, TRACK, TEX_IDS_NUMBER };
+enum TextureID { GRASS, TRACK, SPOTLIGHT_SHADOWMAPS, TEX_IDS_NUMBER };
+
+// range di id per le texture delle shadowmap, per non interferire con le texture normali
+enum ShadowMapID { SUN_SHADOWMAP = TEX_IDS_NUMBER + 1,
+	POSITIONAL_LIGHT_SHADOWMAP_MIN = TEX_IDS_NUMBER + 2,
+	POSITIONAL_LIGHT_SHADOWMAP_MAX = POSITIONAL_LIGHT_SHADOWMAP_MIN + 256,
+	SPOTLIGHT_SHADOWMAP_MIN = POSITIONAL_LIGHT_SHADOWMAP_MAX + 1,
+	SPOTLIGHT_SHADOWMAP_MAX = SPOTLIGHT_SHADOWMAP_MIN + 256,
+};
 
 enum GameState { ARCBALL_STATE, FREECAM_STATE, CAMERAMEN_STATE };
 
 shader basic_shader;
 shader texture_shader;
+shader depth_shader;
 shader debug_shader;
 
 glm::mat4 projection_matrix;
@@ -93,19 +103,21 @@ bool fullscreen = false;
 bool quit = false;
 
 // debug
-bool grass_texture_disabled = false;
-bool track_texture_disabled = false;
 bool show_debug_shapes = false;
 
 
 // callbacks
 static void cursor_position_callback(GLFWwindow* main_window, double xpos, double ypos)
 {
+	if (ImGui::GetIO().WantCaptureMouse) return;
+
 	input_manager::UpdateMousePosition(xpos, ypos);
 }
 
 void mouse_button_callback(GLFWwindow * main_window, int key, int action, int mods)
 {
+	if (ImGui::GetIO().WantCaptureMouse) return;
+
 	input_manager::UpdateKeyState(key, action);
 }
 
@@ -250,8 +262,6 @@ void gui_setup()
 
 	if (ImGui::BeginMenu("Debug"))
 	{
-		ImGui::Checkbox("Grass", &grass_texture_disabled);
-		ImGui::Checkbox("Track", &track_texture_disabled);
 		ImGui::Checkbox("show debug shapes", &show_debug_shapes);
 
 		ImGui::EndMenu();
@@ -273,6 +283,40 @@ void gui_setup()
 	ImGui::End();
 }
 
+void draw_terrain(renderable& terrain, texture& texture, TextureID id, matrix_stack& stack)
+{
+
+	glActiveTexture(GL_TEXTURE0 + id);
+	glUniform1i(texture_shader["uTextureAvailable"], terrain.mater.use_texture);
+	glBindTexture(GL_TEXTURE_2D, texture.id);
+	if (id == GRASS) glDepthRange(0.03, 1);
+	glUniformMatrix4fv(texture_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
+	glUniform1i(texture_shader["uColorImage"], id);
+	terrain.bind();
+	glDrawElements(terrain().mode, terrain().count, terrain().itype, 0);
+	if (id == GRASS) glDepthRange(0.0, 1);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	check_gl_errors(QUI);
+}
+
+void draw_terrain_depthmap(renderable& terrain, TextureID id, matrix_stack& stack)
+{
+	if (id == GRASS) glDepthRange(0.03, 1);
+	glUniformMatrix4fv(depth_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
+	terrain.bind();
+	glDrawElements(terrain().mode, terrain().count, terrain().itype, 0);
+	if (id == GRASS) glDepthRange(0.0, 1);
+	check_gl_errors(QUI);
+}
+
+void draw_3dbodies(std::vector<std::shared_ptr<Body3D>>& bodies, matrix_stack& stack)
+{
+	for (std::shared_ptr<Body3D> body : bodies)
+	{
+			body->Draw(stack);
+	}
+	check_gl_errors(QUI);
+}
 
 void process()
 {
@@ -333,9 +377,9 @@ int main(int argc, char** argv)
 	printout_opengl_glsl_info();
 
 	/* define the viewport  */
-	glViewport(0, 0, 1920, 1080);
+	glViewport(0, 0, window_width, window_height);
 
-	//arcball_camera = ArcballCamera(glm::vec3(0.f, 1.f, 1.5f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
+	int shadowmap_sizex = 1024, shadowmap_sizey = 1024;
 
 	projection_matrix = glm::perspective(glm::radians(45.f), 16.f / 9, 0.001f, 100.f);
 
@@ -348,6 +392,11 @@ int main(int argc, char** argv)
 
 	view_matrix = cameras[camera_index]->GetViewMatrix();
 
+
+	glm::mat4 scene_coordinates_matrix =
+		glm::scale(glm::mat4(1.f), glm::vec3(1.f / r.bbox().diagonal())) *
+		glm::translate(glm::mat4(1.f), -(r.bbox().center()));
+
 	texture grass_texture;
 	grass_texture.load(textures_path + "grass_tile.png", GRASS);
 	texture track_texture;
@@ -357,20 +406,18 @@ int main(int argc, char** argv)
 
 	renderable r_cube = shape_maker::cube();
 
+	//r.apply_matrix_to_track(scene_coordinates_matrix);
 	renderable r_track;
 	r_track.create();
 	game_to_renderable::to_track(r, r_track);
 
 	renderable r_terrain;
 	r_terrain.create();
-	game_to_renderable::to_heightfield(r, r_terrain);
-
-	renderable r_terrain_second;
-	r_terrain_second.create();
 	height_map terrain_heightmap;
 	terrain_heightmap.set_bounding_rect(r.ter().rect_xz[0], r.ter().rect_xz[1], r.ter().rect_xz[2], r.ter().rect_xz[3]);
 	terrain_heightmap.load_from_file("assets/terrain_256.png");
-	terrain_heightmap.to_renderable(r_terrain_second);
+	//terrain_heightmap.apply_matrix(scene_coordinates_matrix);
+	terrain_heightmap.to_renderable(r_terrain);
 		
 	renderable r_trees;
 	r_trees.create();
@@ -380,64 +427,57 @@ int main(int argc, char** argv)
 	r_lamps.create();
 	game_to_renderable::to_lamps(r, r_lamps);
 
-	float s = 1.f / r.bbox().diagonal();
-	glm::vec3 c = r.bbox().center();
-	glm::mat4 r_coordinates_scale_matrix = glm::scale(glm::mat4(1.f), glm::vec3(s));
-	glm::mat4 r_coordinates_translate_matrix = glm::translate(glm::mat4(1.f), -c);
-		
+	r.start(11, 0, 0, 600);
+	r.update();
 
 	// shaders
 	basic_shader.create_program((shaders_path + "basic.vert").c_str(), (shaders_path + "basic.frag").c_str());
 	texture_shader.create_program((shaders_path + "texture.vert").c_str(), (shaders_path + "texture.frag").c_str());
 	Mesh3D::SetShader(texture_shader);
+	depth_shader.create_program((shaders_path + "depth.vert").c_str(), (shaders_path + "depth.frag").c_str());
 	debug_shader.create_program((shaders_path + "debug.vert").c_str(), (shaders_path + "debug.frag").c_str());
 	
 	// Models
 	Mesh3D streetlamp_model("assets/models/decorations/street_lamp.glb");
 	Mesh3D tree_model("assets/models/decorations/tree_3d_model_fir_spruce_pine.glb", .4f);
+	Mesh3D cameraman_model("assets/models/cameraman/sphere_drone_future.glb");
 		
 	std::vector<Mesh3D> car_models;
 	car_models.push_back(Mesh3D("assets/models/cars/bumper_car.glb", .8f));
 	car_models.push_back(Mesh3D("assets/models/cars/bugatti_type_35.glb", .2f));
 	
 	// 3D Bodies
-	std::vector<Body3D> tree_bodies;
+	std::vector<std::shared_ptr<Body3D>> tree_bodies;
 	for (stick_object tree : r.trees())
-		tree_bodies.push_back(Body3D(glm::translate(glm::mat4(1.f), tree.pos), tree_model));
+		tree_bodies.push_back(std::make_shared<Body3D>(scene_coordinates_matrix * glm::translate(glm::mat4(1.f), tree.pos), tree_model));
 
-	std::vector<Body3D> streetlamp_bodies;
+	std::vector<std::shared_ptr<Body3D>> streetlamp_bodies;
 	for (stick_object lamp : r.lamps())
 	{
-		streetlamp_bodies.push_back(Body3D(r_coordinates_scale_matrix * r_coordinates_translate_matrix * glm::translate(glm::mat4(1.f), lamp.pos), streetlamp_model));
-		//glm::vec3 light_pos = streetlamp_bodies.back().GetModelMatrix() * glm::vec4(0, 2.9f, 0, 1.f);
-			//r_coordinates_scale_matrix * r_coordinates_translate_matrix * glm::vec4(lamp.pos + glm::vec3(0, 2.9f, 0), 1.f);
-		// light pos è corretto
-		//std::cout << "Light position: " << glm::to_string(light_pos) << std::endl << "Lamp position: " << glm::to_string(streetlamp_bodies.back().GetModelMatrix() * glm::vec4(0,0,0,1)) << std::endl;
-		streetlamp_bodies.back().AddLight(PositionalLight::Create(glm::vec3(0, 2.9f, 0), 1.f, glm::vec3(3.f)));
+		streetlamp_bodies.push_back(std::make_shared<Body3D>(scene_coordinates_matrix * glm::translate(glm::mat4(1.f), lamp.pos), streetlamp_model));
+		streetlamp_bodies.back()->AddLight(PositionalLight::Create(glm::vec3(0, 2.9f, 0), 1.f, glm::vec3(3.f)));
 	}
-	// Clone
-	std::vector<Body3D> car_bodies;
+
+	std::vector<std::shared_ptr<Body3D>> cameraman_bodies;
+	for (cameraman cam : r.cameramen())
+	{
+		cameraman_bodies.push_back(std::make_shared<Body3D>(scene_coordinates_matrix * cam.frame, cameraman_model));
+	}
+
+	std::vector<std::shared_ptr<Body3D>> car_bodies;
 	for (unsigned int i = 0; i < r.cars().size(); ++i)
 	{
-		car_bodies.push_back(Body3D(
-			glm::translate(r.cars()[i].frame, glm::vec3(0.f, 0.1f, 0.f)) * r.cars()[i].frame,
+		car_bodies.push_back(std::make_shared<Body3D>(
+			scene_coordinates_matrix * r.cars()[i].frame,
 			car_models[rand() % car_models.size()]));
-		 car_bodies.back().AddLight(std::make_unique<SpotLight>(glm::vec3(0, 0, -1.f), glm::vec3(0, 0, -1.f), 30.f, 5.f, glm::vec3(1)));
+		car_bodies.back()->AddLight(SpotLight::Create(glm::vec3(0, 0, -1.f), glm::vec3(0, 0, -1.f), 30.f, 5.f, 20.f, glm::vec3(3.f)));
 	}
 
 	// SSBOs
-	PositionalLight::GenerateSSBO();
+	PositionalLight::GenerateSSBO(view_matrix);
+	SpotLight::GenerateSSBO(view_matrix);
 
-	std::vector<SpotLightSSBOData> spotlights_data = SpotLight::GetLightsData();
-
-	GLuint spotlights_SSBO;
-	glGenBuffers(1, &spotlights_SSBO);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, spotlights_SSBO);
-
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, spotlights_SSBO);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, spotlights_data.size() * sizeof(PositionalLightSSBOData), spotlights_data.data(), GL_DYNAMIC_DRAW);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-
+	// shaders
 	glUseProgram(basic_shader.program);
 	glUniformMatrix4fv(basic_shader["uProj"], 1, GL_FALSE, &projection_matrix[0][0]);
 	glUniformMatrix4fv(basic_shader["uView"], 1, GL_FALSE, &view_matrix[0][0]);
@@ -447,9 +487,16 @@ int main(int argc, char** argv)
 	glUniformMatrix4fv(texture_shader["uProj"], 1, GL_FALSE, &projection_matrix[0][0]);
 	glUniformMatrix4fv(texture_shader["uView"], 1, GL_FALSE, &view_matrix[0][0]);
 
+	glUniform2i(texture_shader["uShadowMapSize"], shadowmap_sizex, shadowmap_sizey);
+	glUniform1i(texture_shader["uSpotLightsShadowMapArray"], SPOTLIGHT_SHADOWMAPS);
 	glUniform1i(texture_shader["uNumPositionalLights"], PositionalLight::GetNumberOfLights());
 	glUniform1i(texture_shader["uNumSpotLights"], SpotLight::GetNumberOfLights());
 	glUniform1f(texture_shader["uSunIntensity"], sun_intensity);
+
+	glUseProgram(depth_shader.program);
+	glUniformMatrix4fv(depth_shader["uModel"], 1, GL_FALSE, &glm::mat4(1.0)[0][0]);
+	glUniformMatrix4fv(depth_shader["uLightMatrix"], 1, GL_FALSE, &glm::mat4(1.0)[0][0]);
+	glUniform1f(depth_shader["uPlaneApprox"], 0.5f);
 
 	glUseProgram(debug_shader.program);
 	glUniformMatrix4fv(debug_shader["uModel"], 1, GL_FALSE, &glm::mat4(1.0)[0][0]);
@@ -458,10 +505,17 @@ int main(int argc, char** argv)
 
 	glUseProgram(0);
 	check_gl_errors(QUI, true);
+	
+	// frame buffer objects for shadow maps
+	// nota: ho usato shared_ptr perchè non ho scritto un copy constructor per frame_buffer_object
+	// e non voglio che vengano distrutti quando escono dallo scope (il distruttore chiama glDeleteFramebuffers)
+	std::vector<std::shared_ptr<frame_buffer_object>> spotlights_fbos;
+	for (int i = 0; i < SpotLight::GetNumberOfLights(); i++)
+		spotlights_fbos.push_back(std::make_shared<frame_buffer_object>(shadowmap_sizex, shadowmap_sizey, true));
 
-	r.start(11,0,0,600);
-	r.update();
-
+	// texture array for shadow maps
+	shadowmap_texture_array spotlights_shadowmaps(shadowmap_sizex, shadowmap_sizey);
+	
 	sun_light = DirectionalLight(r.sunlight_direction(), glm::vec3(3.f));
 	
 	matrix_stack stack;
@@ -477,7 +531,7 @@ int main(int argc, char** argv)
 		glClearColor(0.3f, 0.3f, 0.3f, 1.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-		check_gl_errors(QUI);
+		//check_gl_errors(QUI);
 
 		view_matrix = cameras[camera_index]->GetViewMatrix();
 
@@ -486,15 +540,20 @@ int main(int argc, char** argv)
 		{
 			r.update();
 
-			PositionalLight::UpdateSSBO();
+			PositionalLight::UpdateSSBO(view_matrix);
 
-			for (unsigned int i = 0; i < r.cars().size(); ++i)
+			for (unsigned int i = 0; i < r.cars().size(); i++)
 			{
-				car_bodies[i].SetModelMatrix(r.cars()[i].frame);
-				car_bodies[i].UpdateLights();
+				car_bodies[i]->SetModelMatrix(scene_coordinates_matrix * r.cars()[i].frame);
+				car_bodies[i]->UpdateLights();
 			}
 
-			SpotLight::UpdateLightsData(spotlights_SSBO);
+			for (unsigned int i = 0; i < r.cameramen().size(); i++)
+			{
+				cameraman_bodies[i]->SetModelMatrix(scene_coordinates_matrix * r.cameramen()[i].frame);
+			}
+
+			SpotLight::UpdateSSBO(view_matrix);
 		}
 
 		sun_light.SetDirection(r.sunlight_direction());
@@ -507,23 +566,10 @@ int main(int argc, char** argv)
 		glUniform3f(texture_shader["uSunColor"], sun_light.GetColor().x, sun_light.GetColor().y, sun_light.GetColor().z);
 		glUniform1f(texture_shader["uShininess"], shininess);
 		glUniform3f(texture_shader["uLDir"], sun_light.GetDirection().x, sun_light.GetDirection().y, sun_light.GetDirection().z);
-
-		glUseProgram(debug_shader.program);
-		glUniformMatrix4fv(debug_shader["uView"], 1, GL_FALSE, &view_matrix[0][0]);
-		glUniform3f(debug_shader["uAmbientColor"], ambient_color[0], ambient_color[1], ambient_color[2]);
-		glUniform3f(debug_shader["uDiffuseColor"], diffuse_color[0], diffuse_color[1], diffuse_color[2]);
-		glUniform3f(debug_shader["uSpecularColor"], specular_color[0], specular_color[1], specular_color[2]);
-		glUniform3f(debug_shader["uSunColor"], sun_light.GetColor().x, sun_light.GetColor().y, sun_light.GetColor().z);
-		glUniform1f(debug_shader["uShininess"], shininess);
-		glUniform3f(debug_shader["uLDir"], sun_light.GetDirection().x, sun_light.GetDirection().y, sun_light.GetDirection().z);
 		
-		glUseProgram(basic_shader.program);
-		glUniformMatrix4fv(basic_shader["uView"], 1, GL_FALSE, &view_matrix[0][0]);
 		
 		stack.load_identity();
 		stack.push();
-		glUniformMatrix4fv(basic_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
-		glUniform3f(basic_shader["uColor"], -1.f, 0.6f, 0.f);
 		fram.bind();
 		glDrawArrays(GL_LINES, 0, 6);
 
@@ -533,128 +579,55 @@ int main(int argc, char** argv)
 		glVertex3f(r.sunlight_direction().x, r.sunlight_direction().y, r.sunlight_direction().z);
 		glEnd();
 
-		stack.push();
-		stack.mult(r_coordinates_scale_matrix);
-		stack.mult(r_coordinates_translate_matrix);
+		//depth shader
+		glUseProgram(depth_shader.program);
+		Mesh3D::SetShader(depth_shader);
+		glViewport(0, 0, shadowmap_sizex, shadowmap_sizey);
 
-		if (grass_texture_disabled)
-		{
-			glDepthRange(0.01, 1);
-			glUniformMatrix4fv(basic_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
-			glUniform3f(basic_shader["uColor"], 1, 1, 1.0);
-			//r_terrain.bind();
-			r_terrain_second.bind();
-			//glDrawArrays(GL_POINTS, 0, r_terrain.vn);
-			glDrawArrays(GL_POINTS, 0, r_terrain_second.vn);
-			glDepthRange(0.0, 1);
-		}
-		else
-		{
-			glUseProgram(texture_shader.program);
-			//glUseProgram(debug_shader.program);
-			glActiveTexture(GL_TEXTURE0 + GRASS);
-			//glUniform1i(texture_shader["uTextureAvailable"], r_terrain.mater.use_texture);
-			glUniform1i(texture_shader["uTextureAvailable"], r_terrain_second.mater.use_texture);
-			//glUniform1i(debug_shader["uTextureAvailable"], r_terrain.mater.use_texture);
-			glBindTexture(GL_TEXTURE_2D, grass_texture.id);
-			glDepthRange(0.03, 1);
-			glUniformMatrix4fv(texture_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
-			glUniform1i(texture_shader["uColorImage"], GRASS);
-			//glUniformMatrix4fv(debug_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
-			//glUniform1i(debug_shader["uColorImage"], GRASS);
-			//r_terrain.bind();
-			r_terrain_second.bind();
-			//glDrawElements(r_terrain().mode, r_terrain().count, r_terrain().itype, 0);
-			glDrawElements(r_terrain_second().mode, r_terrain_second().count, r_terrain_second().itype, 0);
-			glDepthRange(0.0, 1);
-			glBindTexture(GL_TEXTURE_2D, 0);
 
-			glUseProgram(basic_shader.program);
-		}
-		
-		if (track_texture_disabled)
-		{
-			glUniformMatrix4fv(basic_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
-			r_track.bind();
-			glPointSize(3.0);
-			glUniform3f(basic_shader["uColor"], 0.2f, 0.3f, 0.2f);
-			glDrawArrays(GL_LINE_STRIP, 0, r_track.vn);
-			glPointSize(1.0);
-		}
-		else
-		{
-			glUseProgram(texture_shader.program);
-			glActiveTexture(GL_TEXTURE0 + TRACK);
-			glUniform1i(texture_shader["uTextureAvailable"], r_track.mater.use_texture);
-			glBindTexture(GL_TEXTURE_2D, track_texture.id);
-			glUniformMatrix4fv(texture_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
-			glUniform1i(texture_shader["uColorImage"], TRACK);
-			r_track.bind();
-			glDrawElements(r_track().mode, r_track().count, r_track().itype, 0);
-			glBindTexture(GL_TEXTURE_2D, 0);
+		//check_gl_errors(QUI);
 
-			glUseProgram(basic_shader.program);
-			glUniformMatrix4fv(basic_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
+		for (int i = 0; i < SpotLight::GetNumberOfLights(); i++)
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, spotlights_fbos[i]->id_fbo);
+			glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+			glUniformMatrix4fv(depth_shader["uLightMatrix"], 1, GL_FALSE, &(SpotLight::GetLightMatrix(i)[0][0]));
+			
+			stack.push();
+			stack.mult(scene_coordinates_matrix);
+			draw_terrain_depthmap(r_terrain, GRASS, stack);
+			draw_terrain_depthmap(r_track, TRACK, stack);
+			stack.pop();
+
+			draw_3dbodies(car_bodies, stack);
+			draw_3dbodies(tree_bodies, stack);
+			draw_3dbodies(streetlamp_bodies, stack);
+			draw_3dbodies(cameraman_bodies, stack);
 		}
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		//check_gl_errors(QUI);
 
 		glUseProgram(texture_shader.program);
+		Mesh3D::SetShader(texture_shader);
+		glViewport(0, 0, window_width, window_height);
 
-		// per i Body3D r_coordinates_scale_matrix e r_coordinates_translate_matrix sono già applicati
+		glActiveTexture(GL_TEXTURE0 + SPOTLIGHT_SHADOWMAPS);
+		spotlights_shadowmaps.update(spotlights_fbos);
+		glBindTexture(GL_TEXTURE_2D_ARRAY, spotlights_shadowmaps.id_tex);
+
+		stack.push();
+		stack.mult(scene_coordinates_matrix);
+		draw_terrain(r_terrain, grass_texture, GRASS, stack);
+		draw_terrain(r_track, track_texture, TRACK, stack);
 		stack.pop();
 
-		// macchine
-		for (Body3D car : car_bodies)
-		{
-			stack.push();
-			car.Draw(stack);
-
-			if (show_debug_shapes)
-			{
-				GraphicalDebugObject debug_cube = GraphicalDebugObject(CUBE);
-				stack.mult(glm::translate(glm::mat4(1), glm::vec3(0, 0, -1.f)));
-				debug_cube.Draw(stack, texture_shader, .4f);
-			}
-
-			stack.pop();
-		}
-
-		glUseProgram(basic_shader.program);
-
-		check_gl_errors(QUI);
-
-		fram.bind();
-		for (unsigned int ic = 0; ic < r.cameramen().size(); ++ic)
-		{
-			stack.push();
-			stack.mult(r.cameramen()[ic].frame);
-			stack.mult(glm::scale(glm::mat4(1.f), glm::vec3(4, 4,4)));
-			glUniformMatrix4fv(basic_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
-			glUniform3f(basic_shader["uColor"], -1.f, 0.6f, 0.f);
-			glDrawArrays(GL_LINES, 0, 6);
-			stack.pop();
-		}
-
-		check_gl_errors(QUI);
-
-		// alberi
-		glUseProgram(texture_shader.program);
-		for (Body3D tree : tree_bodies)
-		{
-			stack.push();
-			tree.Draw(stack);
-			stack.pop();
-		}
-		check_gl_errors(QUI);
-
-		// lampioni
-		for (Body3D lamp : streetlamp_bodies)
-		{
-			stack.push();
-			lamp.Draw(stack);
-			stack.pop();
-		}
-		check_gl_errors(QUI);
-
+		draw_3dbodies(tree_bodies, stack);
+		draw_3dbodies(streetlamp_bodies, stack);
+		draw_3dbodies(cameraman_bodies, stack);
+		draw_3dbodies(car_bodies, stack);
+				
 		stack.pop();
 
 		ImGui_ImplOpenGL3_NewFrame();
@@ -681,7 +654,7 @@ int main(int argc, char** argv)
 			last_time = end_time;
 		}
 
-		Sleep(1000.f / 60 - (end_time - start_time));
+		//Sleep(1000.f / 60 - (end_time - start_time));
 	}
 	
 	glUseProgram(0);

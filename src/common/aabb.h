@@ -3,6 +3,15 @@
 #include <algorithm>
 #include <glm/glm.hpp>
 
+#ifdef min
+#undef min
+#endif
+
+#ifdef max
+#undef max
+#endif
+
+
 /// Standalone axis aligned bounding box implemented built on top of GLM.
 class AABB
 {
@@ -95,6 +104,8 @@ public:
     /// If either of the two AABBs is NULL, then false is returned.
     /// \xxx Untested -- This function is not represented in our unit tests.
     bool isSimilarTo(const AABB& b, float diff = 0.5) const;
+
+    void ApplyMatrix(glm::mat4 matrix);
 
 private:
 
@@ -294,4 +305,27 @@ inline bool AABB::isSimilarTo(const AABB& b, float diff) const
     if (max_diff.y > acceptable_diff.y) return false;
     if (max_diff.z > acceptable_diff.z) return false;
     return true;
+}
+
+inline void AABB::ApplyMatrix(glm::mat4 matrix)
+{
+    setNull();
+
+    glm::vec3 corners[8] =
+    {
+        glm::vec3(mMin.x, mMin.y, mMin.z),
+        glm::vec3(mMax.x, mMin.y, mMin.z),
+        glm::vec3(mMin.x, mMax.y, mMin.z),
+        glm::vec3(mMin.x, mMin.y, mMax.z),
+        glm::vec3(mMax.x, mMax.y, mMin.z),
+        glm::vec3(mMax.x, mMin.y, mMax.z),
+        glm::vec3(mMin.x, mMax.y, mMax.z),
+        glm::vec3(mMax.x, mMax.y, mMax.z)
+    };
+
+    for (int i = 0; i < 8; i++)
+    {
+        glm::vec4 transformedCorner = matrix * glm::vec4(corners[i], 1.0f);
+        extend(glm::vec3(transformedCorner));
+    }
 }

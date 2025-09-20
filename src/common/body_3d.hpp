@@ -3,6 +3,7 @@
 #include<carousel/carousel.h>
 #include<mesh_3d.hpp>
 #include<light.hpp>
+#include<aabb.h>
 
 class Body3D
 {

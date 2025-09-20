@@ -1,6 +1,7 @@
 
 #include <GL/glew.h>
 #include <iostream>
+#include <debugging.h>
 
 
 
@@ -9,6 +10,11 @@ struct frame_buffer_object {
 	int w, h;
 	GLuint id_fbo, id_tex,id_tex1, id_depth;
 	bool use_texture_for_depth;
+
+	frame_buffer_object(int w_, int h_, bool _use_texture_for_depth = false)
+	{
+		create(w_, h_, _use_texture_for_depth);
+	}
 
 	void check(int fboStatus)
 	{
@@ -26,7 +32,7 @@ struct frame_buffer_object {
 	}
 
 
-	void create(int w_, int h_,bool _use_texture_for_depth = false) // le risposte stanno qua dentro
+	void create(int w_, int h_,bool _use_texture_for_depth = false)
 	{
 		if ((w == w_) && (h == h_)&& _use_texture_for_depth== use_texture_for_depth)
 			return;
@@ -62,7 +68,7 @@ struct frame_buffer_object {
 
 		check_gl_errors(__LINE__, __FILE__, true);
 		use_texture_for_depth = _use_texture_for_depth;
-		if (_use_texture_for_depth) // https://gemini.google.com/app/827b2634864c4010
+		if (_use_texture_for_depth)
 		{
 			/* texture for depth  attachment*/
 			glGenTextures(1, &this->id_depth);
