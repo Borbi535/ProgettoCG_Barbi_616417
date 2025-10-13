@@ -26,11 +26,14 @@ public:
 
 	void MouseMove();
 
+	glm::mat4 GetViewMatrix() const override;
+	float GetSpeed() const;
 
-
-	float GetSpeed();
+	void SetSpeed(float speed);
+	void SetSprintSpeedMultiplier(float multiplier);
 
 private:
+	glm::vec3 forward_direction;
 
 	float speed = 10.f;
 	float sprint_speed_multiplier = 1.5f;

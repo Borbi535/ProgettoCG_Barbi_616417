@@ -27,11 +27,16 @@ public:
 	virtual glm::vec3 GetPosition() const = 0;
 	virtual glm::vec3 GetDirection() const;
 	virtual glm::vec3 GetColor() const;
-	
+	virtual glm::mat4 GetLightMatrix() const;
+		
 	virtual void SetDirection(glm::vec3 new_direction) = 0;
 	virtual void SetColor(glm::vec3 new_color);
 	virtual void SetPosition(glm::vec3 new_pos) = 0;
-	virtual void UpdatePointsAndVectors(glm::mat4 matrix) = 0;
+
+	virtual void ApplyMatrix(glm::mat4 matrix) = 0;
+	virtual bool IntersectFrustum(const AABB& obj_aabb);
+
+	virtual ~Light() {}
 
 protected:
 	glm::vec3 direction;
@@ -39,6 +44,13 @@ protected:
 
 	glm::mat4 light_view_matrix;
 	glm::mat4 light_proj_matrix;
+	glm::mat4 light_matrix;
+
+	std::vector<Plane> light_frustum_planes;
+
+	virtual void ComputeFrustumPlanes();
+
+	virtual void Update();
 };
 
 class DirectionalLight : public Light
@@ -49,15 +61,17 @@ public:
 	std::shared_ptr<Light> Clone() override;
 
 	glm::vec3 GetPosition() const override 
-	{ xterminate("You're trying to get the position of a directional light!", QUI); return glm::vec3(0); }
+	{ xterminate("You're trying to get the position of a directional light", QUI); return glm::vec3(0); }
 
 	void SetPosition(glm::vec3 new_pos) override
-	{ xterminate("You're trying to set the position of a directional light!", QUI); }
+	{ xterminate("You're trying to set the position of a directional light", QUI); }
 	void SetDirection(glm::vec3 new_direction) override;
 
-	void UpdatePointsAndVectors(glm::mat4 matrix) override;
+	void ApplyMatrix(glm::mat4 matrix) override;
+	// TODO: ovverride di IntersectFrustum...
 
 private:
+	void Update() override {};
 };
 
 struct PositionalLightSSBOData
@@ -82,16 +96,17 @@ public:
 
 	glm::vec3 GetPosition() const override;
 
-	void UpdatePointsAndVectors(glm::mat4 matrix) override;
-
 	static int GetNumberOfLights();
+	static std::shared_ptr<PositionalLight>& GetPositionalLight(int index);
 
 	static void GenerateSSBO(glm::mat4 view_matrix);
 	static void UpdateSSBO(glm::mat4 view_matrix);
 
 	void SetPosition(glm::vec3 new_pos) override;
 	void SetDirection(glm::vec3 new_direction) override
-	{ xterminate("You're trying to set the direction of a positional light!", QUI); }
+	{ xterminate("You're trying to set the direction of a positional light", QUI); }
+
+	void ApplyMatrix(glm::mat4 matrix) override;
 
 private:
 	glm::vec3 position;
@@ -128,11 +143,9 @@ public:
 	glm::vec3 GetPosition() const override;
 	float GetCutoff() const;
 	float GetInnerCutoff() const;
-	glm::mat4 GetLightMatrix() const;
 
 	static int GetNumberOfLights();
-	static std::vector<std::shared_ptr<SpotLight>>& GetSpotLights();
-	static glm::mat4 GetLightMatrix(int index);
+	static std::shared_ptr<SpotLight>& GetSpotLight(int index);
 
 	static void GenerateSSBO(glm::mat4 view_matrix);
 	static void UpdateSSBO(glm::mat4 view_matrix);
@@ -142,10 +155,9 @@ public:
 	void SetCutoff(float new_cutoff);
 	void SetInnerCutoff(float new_inner_cutoff);
 
-	void UpdatePointsAndVectors(glm::mat4 matrix) override;
+	void ApplyMatrix(glm::mat4 matrix) override;
 
-private:
-	
+private:	
 	glm::vec3 position;
 	glm::vec3 local_position, local_direction;
 	float cutoff, inner_cutoff, range;
@@ -153,8 +165,4 @@ private:
 	static GLuint spot_lights_SSBO;
 	int index;
 	static std::vector<std::shared_ptr<SpotLight>> spot_lights;
-
-	std::vector<Plane> extract_frustum_planes() const;
-
-	bool intersects_frustum(const std::vector<Plane>& frustum_planes, const AABB& obj_aabb);
 };

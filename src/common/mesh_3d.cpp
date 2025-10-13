@@ -1,6 +1,14 @@
 #include <mesh_3d.hpp>
 
-shader* Mesh3D::_shader = nullptr;
+shader* Mesh3D::draw_shader = nullptr;
+GLuint Mesh3D::draw_uColorLocation = 0;
+GLuint Mesh3D::draw_uTextureAvailableLocation = 0;
+GLuint Mesh3D::draw_uModelLocation = 0;
+
+shader* Mesh3D::depth_shader = nullptr;
+GLuint Mesh3D::depth_uColorLocation = 0;
+GLuint Mesh3D::depth_uTextureAvailableLocation = 0;
+GLuint Mesh3D::depth_uModelLocation = 0;
 
 Mesh3D::Mesh3D() {}
 
@@ -39,7 +47,7 @@ Mesh3D::Mesh3D(std::string filename, float scale) : filename(filename), n_vert(0
 
 Mesh3D::Mesh3D(const Mesh3D& mesh)
 {
-	_shader = mesh._shader;
+	draw_shader = mesh.draw_shader;
 	model = mesh.model;
 	object = mesh.object;
 	bbox = mesh.bbox;
@@ -55,31 +63,63 @@ Mesh3D::~Mesh3D()
 	;
 }
 
-AABB Mesh3D::GetAABB() const
-{
-	return aabb;
-}
+AABB Mesh3D::GetAABB() const { return aabb; }
 
-void Mesh3D::SetShader(shader& new_shader) { Mesh3D::_shader = &new_shader; }
+void Mesh3D::SetShaders(shader* draw_shader, shader* depth_shader)
+{
+	Mesh3D::draw_shader = draw_shader;
+	Mesh3D::depth_shader = depth_shader;
+
+	Mesh3D::InitUniformLocation();
+}
 
 void Mesh3D::Draw(matrix_stack& stack) const
 {
-	for (renderable obj : object)
+	for (const renderable& obj : object)
 	{
 		obj.bind();
 		stack.push();
 		stack.mult(obj.transform);
 		if (scale != 1.f) stack.mult(glm::scale(glm::mat4(1), glm::vec3(scale)));
 
-		if ((*Mesh3D::_shader).has_uniform("uColor"))
-			glUniform4f((*Mesh3D::_shader)["uColor"], obj.mater.base_color_factor[0], obj.mater.base_color_factor[1], obj.mater.base_color_factor[2], obj.mater.base_color_factor[3]);
-
-		if ((*Mesh3D::_shader).has_uniform("uTextureAvailable"))
+		if (draw_uColorLocation != -1)
 		{
-			glUniform1i((*Mesh3D::_shader)["uTextureAvailable"], obj.mater.use_texture);
+			glUniform4f(draw_uColorLocation,
+				obj.mater.base_color_factor[0],
+				obj.mater.base_color_factor[1],
+				obj.mater.base_color_factor[2],
+				obj.mater.base_color_factor[3]);
+		}
+
+		if (draw_uTextureAvailableLocation != -1)
+		{
+			glUniform1i(draw_uTextureAvailableLocation, obj.mater.use_texture);
 			glBindTexture(GL_TEXTURE_2D, obj.mater.base_color_texture);
 		}
-		glUniformMatrix4fv((*Mesh3D::_shader)["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
+
+		if (draw_uModelLocation != -1)
+		{
+			glUniformMatrix4fv(draw_uModelLocation, 1, GL_FALSE, &stack.m()[0][0]);
+		}
+
+		glDrawElements(obj().mode, obj().count, obj().itype, 0);
+		stack.pop();
+	}
+}
+
+void Mesh3D::DrawDepthMap(matrix_stack& stack) const
+{
+	for (const renderable& obj : object)
+	{
+		obj.bind();
+		stack.push();
+		stack.mult(obj.transform); // TODO: PROBLEMA: il 50% dell'utilizzo della CPU è qui
+		if (scale != 1.f) stack.mult(glm::scale(glm::mat4(1), glm::vec3(scale)));
+		
+		if (depth_uModelLocation != -1)
+		{
+			glUniformMatrix4fv(depth_uModelLocation, 1, GL_FALSE, &stack.m()[0][0]);
+		}
 
 		glDrawElements(obj().mode, obj().count, obj().itype, 0);
 		stack.pop();
@@ -327,4 +367,13 @@ std::string Mesh3D::GetFilePathExtension(const std::string& FileName)
 {
 	if (FileName.find_last_of(".") != std::string::npos) return FileName.substr(FileName.find_last_of(".") + 1);
 	else return "";
+}
+
+void Mesh3D::InitUniformLocation()
+{
+	draw_uColorLocation = (*draw_shader)["uColor"];
+	draw_uTextureAvailableLocation = (*draw_shader)["uTextureAvailable"];
+	draw_uModelLocation = (*draw_shader)["uModel"];
+
+	depth_uModelLocation = (*depth_shader)["uModel"];
 }

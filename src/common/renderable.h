@@ -60,9 +60,7 @@ struct renderable {
 		transform = glm::mat4(1.f);
 	}
 
-	void bind() {
-		glBindVertexArray(vao);
-	}
+	void bind() const { glBindVertexArray(vao); }
 
 	GLuint assign_vertex_attribute(unsigned int va_id, unsigned int count,
 		unsigned int attribute_index,
@@ -150,8 +148,7 @@ struct renderable {
 	*  Often we have just a set of indices so it comes handy. Otherwise access elements[id]
 	*  with the set of indices you need
 	*/
-	element_array operator()() {
-		if (!elements.empty()) return elements[0]; else return element_array();}
+	element_array operator()() const { if (!elements.empty()) return elements[0]; else return element_array(); }
 
 	
 };

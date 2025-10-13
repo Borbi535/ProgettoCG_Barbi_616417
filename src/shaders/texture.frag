@@ -26,6 +26,7 @@ uniform float uSunIntensity;
 uniform ivec2 uShadowMapSize;
 
 uniform sampler2DArray uSpotLightsShadowMapArray;
+uniform sampler2DArray uPositionalLightsShadowMapArray;
 
 // PositionalLights
 struct PositionalLight
@@ -85,9 +86,30 @@ void main(void)
 	color = vec4(phong(vLDirVS, V, N, uSunColor * uSunIntensity), 1.0);
     //color = vec4(255,255,255,1.0);
 
+    // TODO: ombre sole
+    
     // positional lights
     for (int i = 0; i < uNumPositionalLights; i++)
-    {        
+    {      
+        float visibility = 1.0;
+        float bias = 0.005;
+
+        vec4 vPosLS = spot_lights[i].light_matrix * vec4(vPosWS, 1.0);
+        vec3 projCoords = (vPosLS.xyz / vPosLS.w) * 0.5 + 0.5;
+
+        if (!(projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0 || projCoords.z > 1.0))
+        {
+            vec2 depth = texture(uSpotLightsShadowMapArray, vec3(projCoords.xy, i)).xy;
+            float variance = max(0.0001, depth.y - (depth.x * depth.x));
+
+            float diff = projCoords.z - depth.x;
+            if (diff > bias)
+            {
+                visibility = variance / (variance + diff * diff);
+                visibility = linstep(0.001, 1.0, visibility);
+            }
+        }
+
         vec3 L = positional_lights[i].positionVS.xyz - vPosVS;
         
         float max_distance = positional_lights[i].intensity / 30.0;
@@ -97,26 +119,29 @@ void main(void)
         if (attenuation > 1)
         {
             float attenuation_mapped = clamp(1.0 - distance / max_distance, 0.0, 1.0);
-            color += vec4(phong(L, V, N, positional_lights[i].color.rgb) * attenuation_mapped, 0);
+            color += vec4(phong(L, V, N, positional_lights[i].color.rgb) * attenuation_mapped * visibility, 0);
         }
     }
-
+    
     for (int i = 0; i < uNumSpotLights; i++)
     {
         float visibility = 1.0;
+        float bias = 0.005;
 
         vec4 vPosLS = spot_lights[i].light_matrix * vec4(vPosWS, 1.0);
         vec3 projCoords = (vPosLS.xyz / vPosLS.w) * 0.5 + 0.5;
 
-        vec2 depth = texture(uSpotLightsShadowMapArray, vec3(projCoords.xy, i)).xy;
-
-        float variance = max(0.0001, depth.y - (depth.x * depth.x));
-        float diff = vPosLS.z - depth.x;
-
-        if (diff > 0.0)
+        if (!(projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0 || projCoords.z > 1.0))
         {
-            visibility = variance / (variance + diff * diff);
-            visibility = linstep(0.001, 1.0, visibility);
+            vec2 depth = texture(uSpotLightsShadowMapArray, vec3(projCoords.xy, i)).xy;
+            float variance = max(0.0001, depth.y - (depth.x * depth.x));
+
+            float diff = projCoords.z - depth.x;
+            if (diff > bias)
+            {
+                visibility = variance / (variance + diff * diff);
+                visibility = linstep(0.001, 1.0, visibility);
+            }
         }
 
         vec3 L = normalize(spot_lights[i].positionVS.xyz - vPosVS);
@@ -126,18 +151,10 @@ void main(void)
         float outer_cone_cos = cos(radians(spot_lights[i].cutoff)); // es. cos(45) = 0.707
         float inner_cone_cos = cos(radians(spot_lights[i].inner_cutoff)); // es. cos(2) = 0.999
         
-        // prevenire divisione per zero se gli angoli sono uguali
-        float epsilon = max(0.0001, cos(radians(spot_lights[i].inner_cutoff)) - cos(radians(spot_lights[i].cutoff)));
-        float intensity = clamp((theta - (cos(radians(spot_lights[i].cutoff)))) / epsilon, 0.0, 1.0);
-        //float epsilon = max(0.0001, inner_cone_cos - outer_cone_cos);
-        
-        //float intensity = clamp((theta - outer_cone_cos) / epsilon, 0.0, 1.0);
-        
-        if(theta > cos(radians(spot_lights[i].cutoff)))
-        {
-            color += vec4(phong(L, V, N, spot_lights[i].color.rgb) * intensity * visibility, 0);
-        }
+        float epsilon = max(0.0001, inner_cone_cos - outer_cone_cos);
+        float intensity = clamp((theta - outer_cone_cos) / epsilon, 0.0, 1.0);
 
+        color += vec4(phong(L, V, N, spot_lights[i].color.rgb) * intensity * visibility, 0);        
     }
 
     if (uTextureAvailable == 0) color = uColor*(color.x+color.y+color.z)/3.f;

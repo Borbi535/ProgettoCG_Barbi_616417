@@ -24,14 +24,23 @@ public:
 
 	AABB GetAABB() const;
 
-	static void SetShader(shader& new_shader);
+	static void SetShaders(shader* draw_shader, shader* depth_shader);
 
 	void Draw(matrix_stack& stack) const;
+	void DrawDepthMap(matrix_stack& stack) const;
 
 
 private:
 
-	static shader* _shader;
+	static shader* draw_shader;
+	static GLuint draw_uColorLocation;
+	static GLuint draw_uTextureAvailableLocation;
+	static GLuint draw_uModelLocation;
+
+	static shader* depth_shader;
+	static GLuint depth_uColorLocation;
+	static GLuint depth_uTextureAvailableLocation;
+	static GLuint depth_uModelLocation;
 
 	tinygltf::Model model; // da levare, non serve memorizzarlo
 	std::vector<renderable> object;
@@ -49,4 +58,6 @@ private:
 	void VisitMesh(tinygltf::Mesh& mesh, glm::mat4 currT);
 
 	static std::string GetFilePathExtension(const std::string& FileName);
+
+	static void InitUniformLocation();
 };

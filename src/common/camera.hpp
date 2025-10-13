@@ -21,8 +21,9 @@ public:
 
 	~Camera();
 
-	glm::mat4 GetViewMatrix();
-	glm::vec3 GetPosition();
+	virtual glm::mat4 GetViewMatrix() const;
+
+	glm::vec3 GetPosition() const;
 
 	void SetParameters(glm::vec3 eye, glm::vec3 view_dir, glm::vec3 up_dir);
 	

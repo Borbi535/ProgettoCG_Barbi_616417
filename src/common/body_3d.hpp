@@ -16,9 +16,12 @@ public:
 	void Rotate(glm::vec3 axis, float angle);
 		
 	void Draw(matrix_stack& stack);
+	void DrawDepthMap(matrix_stack& stack);
 	void UpdateLights();
 
 	glm::mat4 GetModelMatrix() const;
+	AABB GetLocalAABB() const;
+	AABB GetWorldAABB() const;
 
 	void SetPosition(glm::vec3 position);
 	void SetScale(float scale);
@@ -28,5 +31,6 @@ private:
 	glm::mat4 _model_matrix;
 
 	const Mesh3D& _mesh;
+	AABB world_aabb;
 	std::vector<std::shared_ptr<Light>> lights;
 };

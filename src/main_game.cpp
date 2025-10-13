@@ -52,17 +52,9 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 
-enum TextureID { GRASS, TRACK, SPOTLIGHT_SHADOWMAPS, TEX_IDS_NUMBER };
+enum TextureID { BASE_TEXTURE, NORMAL_MAP, SPOTLIGHTS_SHADOWMAPS, POSITIONAL_LIGHTS_SHADOWMAPS, TEX_IDS_NUMBER };
 
-// range di id per le texture delle shadowmap, per non interferire con le texture normali
-enum ShadowMapID { SUN_SHADOWMAP = TEX_IDS_NUMBER + 1,
-	POSITIONAL_LIGHT_SHADOWMAP_MIN = TEX_IDS_NUMBER + 2,
-	POSITIONAL_LIGHT_SHADOWMAP_MAX = POSITIONAL_LIGHT_SHADOWMAP_MIN + 256,
-	SPOTLIGHT_SHADOWMAP_MIN = POSITIONAL_LIGHT_SHADOWMAP_MAX + 1,
-	SPOTLIGHT_SHADOWMAP_MAX = SPOTLIGHT_SHADOWMAP_MIN + 256,
-};
-
-enum GameState { ARCBALL_STATE, FREECAM_STATE, CAMERAMEN_STATE };
+enum GameState { ARCBALL_STATE, FREECAM_STATE, CAMERAMEN_STATE, GAMESTATES_NUMBER };
 
 shader basic_shader;
 shader texture_shader;
@@ -101,6 +93,7 @@ glm::vec2 window_center;
 GLFWwindow* main_window;
 bool fullscreen = false;
 bool quit = false;
+double target_frametime = 1.f / 60.f;
 
 // debug
 bool show_debug_shapes = false;
@@ -237,6 +230,15 @@ void gui_setup()
 			ImGui::EndMenu();
 		}
 
+		if (ImGui::BeginMenu("Framerate cap"))
+		{
+			if (ImGui::Selectable("30 FPS", target_frametime == 1.f / 30.f)) target_frametime = 1.f / 30.f;
+			if (ImGui::Selectable("60 FPS", target_frametime == 1.f / 60.f)) target_frametime = 1.f / 60.f;
+			if (ImGui::Selectable("120 FPS", target_frametime == 1.f / 120.f)) target_frametime = 1.f / 120.f;
+			if (ImGui::Selectable("No cap", target_frametime == 0.f)) target_frametime = 0.f;
+			ImGui::EndMenu();
+		}
+
 		ImGui::EndMenu();
 	}
 
@@ -283,30 +285,22 @@ void gui_setup()
 	ImGui::End();
 }
 
-void draw_terrain(renderable& terrain, texture& texture, TextureID id, matrix_stack& stack)
+void draw_terrain(renderable& terrain, texture& texture, matrix_stack& stack)
 {
-
-	glActiveTexture(GL_TEXTURE0 + id);
+	glActiveTexture(GL_TEXTURE0 + BASE_TEXTURE);
 	glUniform1i(texture_shader["uTextureAvailable"], terrain.mater.use_texture);
 	glBindTexture(GL_TEXTURE_2D, texture.id);
-	if (id == GRASS) glDepthRange(0.03, 1);
 	glUniformMatrix4fv(texture_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
-	glUniform1i(texture_shader["uColorImage"], id);
 	terrain.bind();
 	glDrawElements(terrain().mode, terrain().count, terrain().itype, 0);
-	if (id == GRASS) glDepthRange(0.0, 1);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	check_gl_errors(QUI);
 }
 
-void draw_terrain_depthmap(renderable& terrain, TextureID id, matrix_stack& stack)
+void draw_terrain_depthmap(renderable& terrain, matrix_stack& stack)
 {
-	if (id == GRASS) glDepthRange(0.03, 1);
 	glUniformMatrix4fv(depth_shader["uModel"], 1, GL_FALSE, &stack.m()[0][0]);
 	terrain.bind();
 	glDrawElements(terrain().mode, terrain().count, terrain().itype, 0);
-	if (id == GRASS) glDepthRange(0.0, 1);
-	check_gl_errors(QUI);
 }
 
 void draw_3dbodies(std::vector<std::shared_ptr<Body3D>>& bodies, matrix_stack& stack)
@@ -315,7 +309,20 @@ void draw_3dbodies(std::vector<std::shared_ptr<Body3D>>& bodies, matrix_stack& s
 	{
 			body->Draw(stack);
 	}
-	check_gl_errors(QUI);
+}
+
+void draw_3dbodies_depthmap(
+	std::vector<std::shared_ptr<Body3D>>& bodies,
+	matrix_stack& stack,
+	std::shared_ptr<Light> light)
+{
+	for (std::shared_ptr<Body3D> body : bodies)
+	{
+		if (light->IntersectFrustum(body->GetWorldAABB()))
+		{
+			body->DrawDepthMap(stack);
+		}
+	}
 }
 
 void process()
@@ -381,7 +388,7 @@ int main(int argc, char** argv)
 
 	int shadowmap_sizex = 1024, shadowmap_sizey = 1024;
 
-	projection_matrix = glm::perspective(glm::radians(45.f), 16.f / 9, 0.001f, 100.f);
+	projection_matrix = glm::perspective(glm::radians(45.f), 16.f / 9, 0.01f, 3.f);
 
 	cameras[ARCBALL_ID] = &arcball_camera;
 	cameras[ARCBALL_ID]->is_active = true;
@@ -398,9 +405,9 @@ int main(int argc, char** argv)
 		glm::translate(glm::mat4(1.f), -(r.bbox().center()));
 
 	texture grass_texture;
-	grass_texture.load(textures_path + "grass_tile.png", GRASS);
+	grass_texture.load(textures_path + "grass_tile.png", BASE_TEXTURE);
 	texture track_texture;
-	track_texture.load(textures_path + "street_tile.png", TRACK);
+	track_texture.load(textures_path + "street_tile.png", BASE_TEXTURE);
 
 	renderable fram = shape_maker::frame();
 
@@ -433,10 +440,9 @@ int main(int argc, char** argv)
 	// shaders
 	basic_shader.create_program((shaders_path + "basic.vert").c_str(), (shaders_path + "basic.frag").c_str());
 	texture_shader.create_program((shaders_path + "texture.vert").c_str(), (shaders_path + "texture.frag").c_str());
-	Mesh3D::SetShader(texture_shader);
 	depth_shader.create_program((shaders_path + "depth.vert").c_str(), (shaders_path + "depth.frag").c_str());
 	debug_shader.create_program((shaders_path + "debug.vert").c_str(), (shaders_path + "debug.frag").c_str());
-	
+		
 	// Models
 	Mesh3D streetlamp_model("assets/models/decorations/street_lamp.glb");
 	Mesh3D tree_model("assets/models/decorations/tree_3d_model_fir_spruce_pine.glb", .4f);
@@ -448,27 +454,29 @@ int main(int argc, char** argv)
 	
 	// 3D Bodies
 	std::vector<std::shared_ptr<Body3D>> tree_bodies;
-	for (stick_object tree : r.trees())
+	for (const stick_object& tree : r.trees())
 		tree_bodies.push_back(std::make_shared<Body3D>(scene_coordinates_matrix * glm::translate(glm::mat4(1.f), tree.pos), tree_model));
 
 	std::vector<std::shared_ptr<Body3D>> streetlamp_bodies;
-	for (stick_object lamp : r.lamps())
+	for (const stick_object& lamp : r.lamps())
 	{
 		streetlamp_bodies.push_back(std::make_shared<Body3D>(scene_coordinates_matrix * glm::translate(glm::mat4(1.f), lamp.pos), streetlamp_model));
 		streetlamp_bodies.back()->AddLight(PositionalLight::Create(glm::vec3(0, 2.9f, 0), 1.f, glm::vec3(3.f)));
 	}
 
 	std::vector<std::shared_ptr<Body3D>> cameraman_bodies;
-	for (cameraman cam : r.cameramen())
+	for (const cameraman& cam : r.cameramen())
 	{
-		cameraman_bodies.push_back(std::make_shared<Body3D>(scene_coordinates_matrix * cam.frame, cameraman_model));
+		cameraman_bodies.push_back(std::make_shared<Body3D>(
+			glm::translate(glm::mat4(1.f), glm::vec3(0, 0.01f, 0)) *
+			scene_coordinates_matrix * cam.frame, cameraman_model));
 	}
 
 	std::vector<std::shared_ptr<Body3D>> car_bodies;
 	for (unsigned int i = 0; i < r.cars().size(); ++i)
 	{
 		car_bodies.push_back(std::make_shared<Body3D>(
-			scene_coordinates_matrix * r.cars()[i].frame,
+			 scene_coordinates_matrix * r.cars()[i].frame,
 			car_models[rand() % car_models.size()]));
 		car_bodies.back()->AddLight(SpotLight::Create(glm::vec3(0, 0, -1.f), glm::vec3(0, 0, -1.f), 30.f, 5.f, 20.f, glm::vec3(3.f)));
 	}
@@ -477,7 +485,7 @@ int main(int argc, char** argv)
 	PositionalLight::GenerateSSBO(view_matrix);
 	SpotLight::GenerateSSBO(view_matrix);
 
-	// shaders
+	// shaders uniforms
 	glUseProgram(basic_shader.program);
 	glUniformMatrix4fv(basic_shader["uProj"], 1, GL_FALSE, &projection_matrix[0][0]);
 	glUniformMatrix4fv(basic_shader["uView"], 1, GL_FALSE, &view_matrix[0][0]);
@@ -487,8 +495,12 @@ int main(int argc, char** argv)
 	glUniformMatrix4fv(texture_shader["uProj"], 1, GL_FALSE, &projection_matrix[0][0]);
 	glUniformMatrix4fv(texture_shader["uView"], 1, GL_FALSE, &view_matrix[0][0]);
 
+	glUniform1i(texture_shader["uColorImage"], BASE_TEXTURE);
+	// normal map texture
+
 	glUniform2i(texture_shader["uShadowMapSize"], shadowmap_sizex, shadowmap_sizey);
-	glUniform1i(texture_shader["uSpotLightsShadowMapArray"], SPOTLIGHT_SHADOWMAPS);
+	glUniform1i(texture_shader["uSpotLightsShadowMapArray"], SPOTLIGHTS_SHADOWMAPS);
+	glUniform1i(texture_shader["uPositionalLightsShadowMapArray"], POSITIONAL_LIGHTS_SHADOWMAPS);
 	glUniform1i(texture_shader["uNumPositionalLights"], PositionalLight::GetNumberOfLights());
 	glUniform1i(texture_shader["uNumSpotLights"], SpotLight::GetNumberOfLights());
 	glUniform1f(texture_shader["uSunIntensity"], sun_intensity);
@@ -504,6 +516,9 @@ int main(int argc, char** argv)
 	glUniformMatrix4fv(debug_shader["uView"], 1, GL_FALSE, &view_matrix[0][0]);
 
 	glUseProgram(0);
+
+	Mesh3D::SetShaders(&texture_shader, &depth_shader);
+
 	check_gl_errors(QUI, true);
 	
 	// frame buffer objects for shadow maps
@@ -516,6 +531,12 @@ int main(int argc, char** argv)
 	// texture array for shadow maps
 	shadowmap_texture_array spotlights_shadowmaps(shadowmap_sizex, shadowmap_sizey);
 	
+	std::vector<std::shared_ptr<frame_buffer_object>> positional_lights_fbos;
+	for (int i = 0; i < PositionalLight::GetNumberOfLights(); i++)
+		positional_lights_fbos.push_back(std::make_shared<frame_buffer_object>(shadowmap_sizex, shadowmap_sizey, true));
+
+	shadowmap_texture_array positional_lights_shadowmaps(shadowmap_sizex, shadowmap_sizey);
+
 	sun_light = DirectionalLight(r.sunlight_direction(), glm::vec3(3.f));
 	
 	matrix_stack stack;
@@ -531,9 +552,10 @@ int main(int argc, char** argv)
 		glClearColor(0.3f, 0.3f, 0.3f, 1.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-		//check_gl_errors(QUI);
+		check_gl_errors(QUI);
 
 		view_matrix = cameras[camera_index]->GetViewMatrix();
+		//std::cout << glm::to_string(view_matrix) << std::endl;
 
 		// Update
 		if (!game_paused)
@@ -550,7 +572,9 @@ int main(int argc, char** argv)
 
 			for (unsigned int i = 0; i < r.cameramen().size(); i++)
 			{
-				cameraman_bodies[i]->SetModelMatrix(scene_coordinates_matrix * r.cameramen()[i].frame);
+				cameraman_bodies[i]->SetModelMatrix(
+					glm::translate(glm::mat4(1.f), glm::vec3(0, 0.01f, 0)) *
+					scene_coordinates_matrix * r.cameramen()[i].frame);
 			}
 
 			SpotLight::UpdateSSBO(view_matrix);
@@ -579,55 +603,78 @@ int main(int argc, char** argv)
 		glVertex3f(r.sunlight_direction().x, r.sunlight_direction().y, r.sunlight_direction().z);
 		glEnd();
 
+		
 		//depth shader
 		glUseProgram(depth_shader.program);
-		Mesh3D::SetShader(depth_shader);
 		glViewport(0, 0, shadowmap_sizex, shadowmap_sizey);
 
-
-		//check_gl_errors(QUI);
+		check_gl_errors(QUI);
 
 		for (int i = 0; i < SpotLight::GetNumberOfLights(); i++)
 		{
 			glBindFramebuffer(GL_FRAMEBUFFER, spotlights_fbos[i]->id_fbo);
 			glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-			glUniformMatrix4fv(depth_shader["uLightMatrix"], 1, GL_FALSE, &(SpotLight::GetLightMatrix(i)[0][0]));
+			const std::shared_ptr<Light>& light = SpotLight::GetSpotLight(i);
+
+			glUniformMatrix4fv(depth_shader["uLightMatrix"], 1, GL_FALSE, &(light->GetLightMatrix()[0][0]));
 			
 			stack.push();
 			stack.mult(scene_coordinates_matrix);
-			draw_terrain_depthmap(r_terrain, GRASS, stack);
-			draw_terrain_depthmap(r_track, TRACK, stack);
+			draw_terrain_depthmap(r_terrain, stack);
+			draw_terrain_depthmap(r_track, stack);
 			stack.pop();
 
-			draw_3dbodies(car_bodies, stack);
-			draw_3dbodies(tree_bodies, stack);
-			draw_3dbodies(streetlamp_bodies, stack);
-			draw_3dbodies(cameraman_bodies, stack);
+			draw_3dbodies_depthmap(car_bodies, stack, light);
+			draw_3dbodies_depthmap(tree_bodies, stack, light);
+			draw_3dbodies_depthmap(streetlamp_bodies, stack, light);
+			draw_3dbodies_depthmap(cameraman_bodies, stack, light);
 		}
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-		//check_gl_errors(QUI);
+		for (int i = 0; i < PositionalLight::GetNumberOfLights(); i++)
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, positional_lights_fbos[i]->id_fbo);
+			glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+			const std::shared_ptr<Light>& light = PositionalLight::GetPositionalLight(i);
+
+			glUniformMatrix4fv(depth_shader["uLightMatrix"], 1, GL_FALSE, &(light->GetLightMatrix()[0][0]));
+
+			stack.push();
+			stack.mult(scene_coordinates_matrix);
+			draw_terrain_depthmap(r_terrain, stack);
+			draw_terrain_depthmap(r_track, stack);
+			stack.pop();
+
+			draw_3dbodies_depthmap(car_bodies, stack, light);
+			draw_3dbodies_depthmap(tree_bodies, stack, light);
+			draw_3dbodies_depthmap(streetlamp_bodies, stack, light);
+			draw_3dbodies_depthmap(cameraman_bodies, stack, light);
+		}
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		check_gl_errors(QUI);
 
 		glUseProgram(texture_shader.program);
-		Mesh3D::SetShader(texture_shader);
 		glViewport(0, 0, window_width, window_height);
 
-		glActiveTexture(GL_TEXTURE0 + SPOTLIGHT_SHADOWMAPS);
+		glActiveTexture(GL_TEXTURE0 + SPOTLIGHTS_SHADOWMAPS);
 		spotlights_shadowmaps.update(spotlights_fbos);
 		glBindTexture(GL_TEXTURE_2D_ARRAY, spotlights_shadowmaps.id_tex);
 
 		stack.push();
 		stack.mult(scene_coordinates_matrix);
-		draw_terrain(r_terrain, grass_texture, GRASS, stack);
-		draw_terrain(r_track, track_texture, TRACK, stack);
+		glDepthRange(0.03, 1);
+		draw_terrain(r_terrain, grass_texture, stack);
+		glDepthRange(0.0, 1);
+		draw_terrain(r_track, track_texture, stack);
 		stack.pop();
 
 		draw_3dbodies(tree_bodies, stack);
 		draw_3dbodies(streetlamp_bodies, stack);
 		draw_3dbodies(cameraman_bodies, stack);
 		draw_3dbodies(car_bodies, stack);
-				
+		
 		stack.pop();
 
 		ImGui_ImplOpenGL3_NewFrame();
@@ -644,15 +691,18 @@ int main(int argc, char** argv)
 		glfwPollEvents();
 		process(); // da migliorare
 
+		n_frames++;
+		double current_time = glfwGetTime();
+		if (current_time - last_time >= 1.0)
+		{
+			fps = (double)n_frames;
+			n_frames = 0;
+			last_time = current_time;
+		}
 
 		double end_time = glfwGetTime();
-		n_frames++;
-		if (end_time - last_time >= 1.0)
-		{
-			fps = (double)(n_frames * 0.5 + n_frames * 0.5);
-			n_frames = 0;
-			last_time = end_time;
-		}
+		double remaining_time = target_frametime - (end_time - start_time);
+		if (remaining_time > 0) { while (glfwGetTime() - end_time < remaining_time) {} }
 
 		//Sleep(1000.f / 60 - (end_time - start_time));
 	}

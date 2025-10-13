@@ -1,19 +1,23 @@
 TOFIX:
 
-	-freecam come view_manipulation
 	-texture strada stirata bene
 	-il sole ha qualcosa di strano
-	-luci macchine
 	
 TODO:
-
-	-precalcolare normali
+ 
 	-aggiungere macchine diverse
-	-depth map
 	-capire perchè cazzo si riempie la ram di merda
+	-cameramen
+	-ombre dei lampioni
+	-ombre del sole
+	-normal map della strada
+	-funzionalità extra (ray tracing)
 	
 	
 		
 		
 		
 note
+	
+	-modello dei cameramen si abbassano quando mi abbasso
+		-risolto alzandole di 0.01. non ho capito però perchè avevano questo comportamento

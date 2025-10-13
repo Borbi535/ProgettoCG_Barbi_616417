@@ -309,8 +309,6 @@ inline bool AABB::isSimilarTo(const AABB& b, float diff) const
 
 inline void AABB::ApplyMatrix(glm::mat4 matrix)
 {
-    setNull();
-
     glm::vec3 corners[8] =
     {
         glm::vec3(mMin.x, mMin.y, mMin.z),
@@ -323,9 +321,14 @@ inline void AABB::ApplyMatrix(glm::mat4 matrix)
         glm::vec3(mMax.x, mMax.y, mMax.z)
     };
 
-    for (int i = 0; i < 8; i++)
+    glm::vec4 first_corner = matrix * glm::vec4(corners[0], 1.0f);
+
+    // Inizializza l'AABB con il primo punto trasformato
+    mMin = glm::vec3(first_corner);
+    mMax = glm::vec3(first_corner);
+
+    for (int i = 1; i < 8; i++)
     {
-        glm::vec4 transformedCorner = matrix * glm::vec4(corners[i], 1.0f);
-        extend(glm::vec3(transformedCorner));
+        extend(glm::vec3(matrix * glm::vec4(corners[i], 1.0f)));
     }
 }
