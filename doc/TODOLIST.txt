@@ -6,7 +6,7 @@ TOFIX:
 TODO:
  
 	-aggiungere macchine diverse
-	-capire perchè cazzo si riempie la ram di merda
+	-verificare utilizzo memoria
 	-cameramen
 	-ombre dei lampioni
 	-ombre del sole
